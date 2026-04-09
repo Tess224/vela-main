@@ -1,108 +1,136 @@
-// lib/services/session_pipeline_service.dart — HTTP calls to Railway.
-// Handles session start (brief), message exchange, and post-session processing.
-// All API keys stay on Railway — Flutter only sends user data.
-
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../config/env.dart';
-import '../config/constants.dart';
 import '../models/session_model.dart';
 
 class SessionPipelineService {
-  SessionPipelineService._();
-  static final SessionPipelineService instance = SessionPipelineService._();
+  Future<String> fetchBrief(String sessionType) async {
+    final userId = _getUserId();
+    final uri = Uri.parse('${Env.sessionPipelineUrl}/brief');
 
-  final _httpClient = http.Client();
-
-  // Start a session — calls reasoning layer, returns brief
-  Future<Map<String, dynamic>> startSession({
-    required String userId,
-    required SessionType sessionType,
-    Map<String, dynamic>? deviationContext,
-  }) async {
-    final typeStr = sessionType == SessionType.morning
-        ? 'morning'
-        : sessionType == SessionType.evening
-            ? 'evening'
-            : 'in_moment';
-
-    final body = {
-      'user_id': userId,
-      'session_type': typeStr,
-      if (deviationContext != null) 'deviation_context': deviationContext,
-    };
-
-    final response = await _httpClient
-        .post(
-          Uri.parse('${Env.sessionPipelineUrl}/session'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .timeout(AppConstants.httpTimeout);
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'session_type': sessionType,
+      }),
+    );
 
     if (response.statusCode != 200) {
-      throw Exception('Session start failed: ${response.statusCode}');
+      throw SessionPipelineException(
+        'Brief fetch failed: ${response.statusCode}',
+        statusCode: response.statusCode,
+      );
     }
 
-    return jsonDecode(response.body) as Map<String, dynamic>;
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final brief = json['brief'] as String?;
+
+    if (brief == null || brief.trim().isEmpty) {
+      throw SessionPipelineException('Brief returned empty response');
+    }
+
+    return brief;
   }
 
-  // Send a message in an active session — returns Claude's response as a stream
-  Stream<String> sendMessage({
-    required String userId,
-    required String sessionId,
-    required String text,
+  Stream<String> sendMessage(
+    String text, {
+    required String sessionType,
   }) async* {
-    final request = http.Request(
-      'POST',
-      Uri.parse('${Env.sessionPipelineUrl}/session/message'),
-    );
-    request.headers['Content-Type'] = 'application/json';
-    request.body = jsonEncode({
+    final userId = _getUserId();
+    final uri = Uri.parse('${Env.sessionPipelineUrl}/session');
+
+    final client = HttpClient();
+    final request = await client.postUrl(uri);
+    request.headers.set('Content-Type', 'application/json');
+    request.headers.set('Accept', 'text/event-stream');
+
+    request.write(jsonEncode({
       'user_id': userId,
-      'session_id': sessionId,
+      'session_type': sessionType,
       'message': text,
-    });
+    }));
 
-    final streamedResponse = await _httpClient.send(request).timeout(AppConstants.httpTimeout);
+    final response = await request.close();
 
-    if (streamedResponse.statusCode != 200) {
-      throw Exception('Message send failed: ${streamedResponse.statusCode}');
+    if (response.statusCode != 200) {
+      client.close();
+      throw SessionPipelineException(
+        'Session pipeline failed: ${response.statusCode}',
+        statusCode: response.statusCode,
+      );
     }
 
-    // SSE stream — each line is a token or event
-    await for (final chunk in streamedResponse.stream.transform(utf8.decoder)) {
-      for (final line in chunk.split('\n')) {
+    await for (final chunk in response.transform(utf8.decoder)) {
+      final lines = chunk.split('\n');
+      for (final line in lines) {
         if (line.startsWith('data: ')) {
-          final data = line.substring(6).trim();
-          if (data == '[DONE]') return;
+          final data = line.substring(6);
+          if (data == '[DONE]') {
+            client.close();
+            return;
+          }
           yield data;
         }
       }
     }
+
+    client.close();
   }
 
-  // End session — triggers transcript extraction + pattern engine
   Future<void> endSession({
-    required String userId,
-    required String sessionId,
+    required List<Exchange> exchanges,
+    required String sessionType,
   }) async {
-    final response = await _httpClient
-        .post(
-          Uri.parse('${Env.sessionPipelineUrl}/session/end'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'user_id': userId,
-            'session_id': sessionId,
-          }),
-        )
-        .timeout(AppConstants.httpTimeout);
+    final userId = _getUserId();
+    final uri = Uri.parse('${Env.sessionPipelineUrl}/session/end');
+
+    final transcript = exchanges.map((e) {
+      final parts = <String>[];
+      if (e.userText.isNotEmpty) parts.add('User: ${e.userText}');
+      if (e.avatarText.isNotEmpty) parts.add('Vela: ${e.avatarText}');
+      return parts.join('\n');
+    }).join('\n\n');
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'session_type': sessionType,
+        'transcript': transcript,
+      }),
+    );
 
     if (response.statusCode != 200) {
-      throw Exception('Session end failed: ${response.statusCode}');
+      throw SessionPipelineException(
+        'End session failed: ${response.statusCode}',
+        statusCode: response.statusCode,
+      );
     }
   }
 
-  void dispose() => _httpClient.close();
+  String _getUserId() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      throw SessionPipelineException('User not authenticated');
+    }
+    return user.id;
+  }
+}
+
+class SessionPipelineException implements Exception {
+  final String message;
+  final int? statusCode;
+
+  SessionPipelineException(this.message, {this.statusCode});
+
+  @override
+  String toString() => 'SessionPipelineException: $message';
 }

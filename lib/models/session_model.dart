@@ -1,22 +1,14 @@
-// lib/models/session_model.dart — Session state model.
-// Tracks session lifecycle, audio state, exchanges, and waveform amplitude.
+enum SessionType { morning, evening, inMoment }
 
 enum SessionState { idle, loading, active, ending }
 
 enum AudioState { listening, processing, speaking, textMode }
 
-enum SessionType { morning, evening, inMoment }
-
 class Exchange {
-  final String speaker; // 'user' or 'avatar'
-  final String text;
-  final DateTime timestamp;
+  final String userText;
+  final String avatarText;
 
-  const Exchange({
-    required this.speaker,
-    required this.text,
-    required this.timestamp,
-  });
+  const Exchange({this.userText = '', this.avatarText = ''});
 }
 
 class SessionModel {
@@ -24,46 +16,42 @@ class SessionModel {
   final AudioState audioState;
   final SessionType? sessionType;
   final String? sessionId;
-  final List<Exchange> exchanges;
+  final String? brief;
   final double waveformAmplitude;
-  final String? brief; // from reasoning layer
-  final String? deviationContext; // for in-moment sessions
+  final List<Exchange> recentExchanges;
 
   const SessionModel({
-    this.sessionState = SessionState.idle,
-    this.audioState = AudioState.listening,
+    required this.sessionState,
+    required this.audioState,
     this.sessionType,
     this.sessionId,
-    this.exchanges = const [],
-    this.waveformAmplitude = 0.0,
     this.brief,
-    this.deviationContext,
+    this.waveformAmplitude = 0.0,
+    this.recentExchanges = const [],
   });
 
-  factory SessionModel.idle() => const SessionModel();
-
-  List<Exchange> get recentExchanges =>
-      exchanges.length > 6 ? exchanges.sublist(exchanges.length - 6) : exchanges;
+  factory SessionModel.idle() => const SessionModel(
+        sessionState: SessionState.idle,
+        audioState: AudioState.listening,
+      );
 
   SessionModel copyWith({
     SessionState? sessionState,
     AudioState? audioState,
     SessionType? sessionType,
     String? sessionId,
-    List<Exchange>? exchanges,
-    double? waveformAmplitude,
     String? brief,
-    String? deviationContext,
+    double? waveformAmplitude,
+    List<Exchange>? recentExchanges,
   }) {
     return SessionModel(
       sessionState: sessionState ?? this.sessionState,
       audioState: audioState ?? this.audioState,
       sessionType: sessionType ?? this.sessionType,
       sessionId: sessionId ?? this.sessionId,
-      exchanges: exchanges ?? this.exchanges,
-      waveformAmplitude: waveformAmplitude ?? this.waveformAmplitude,
       brief: brief ?? this.brief,
-      deviationContext: deviationContext ?? this.deviationContext,
+      waveformAmplitude: waveformAmplitude ?? this.waveformAmplitude,
+      recentExchanges: recentExchanges ?? this.recentExchanges,
     );
   }
 }
