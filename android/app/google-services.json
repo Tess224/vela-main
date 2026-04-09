@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "213840680144",
+    "project_id": "vela-app-5ea2a",
+    "storage_bucket": "vela-app-5ea2a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:213840680144:android:bcc51be22febcfabf47ad5",
+        "android_client_info": {
+          "package_name": "com.tess224.vela_main"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATm9OyN5jzvfAoHFdgjxuiws5B5JTnsyc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
