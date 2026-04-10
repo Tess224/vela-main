@@ -1,22 +1,23 @@
 // lib/router.dart — GoRouter configuration.
 // Auth redirect: unauthenticated → /sign-in.
-// Session auto-open: morning/evening window → session screen.
 // Notification deep links: FCM payload → correct screen.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'models/session_model.dart';
 import 'screens/auth/sign_in_screen.dart';
 import 'screens/auth/sign_up_screen.dart';
-import 'screens/onboarding/welcome_screen.dart';
-import 'screens/onboarding/wearable_permissions_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/in_moment_card.dart';
 import 'screens/onboarding/profile_screen.dart';
 import 'screens/onboarding/ready_screen.dart';
-import 'screens/placeholder/dashboard_placeholder.dart';
-import 'screens/placeholder/session_placeholder.dart';
-import 'screens/placeholder/in_moment_placeholder.dart';
-import 'screens/placeholder/settings_placeholder.dart';
+import 'screens/onboarding/wearable_permissions_screen.dart';
+import 'screens/onboarding/welcome_screen.dart';
+import 'screens/session_screen.dart';
+import 'screens/settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -26,7 +27,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthenticated = session != null;
       final isAuthRoute = state.matchedLocation == '/sign-in' ||
           state.matchedLocation == '/sign-up';
-      
 
       // Not authenticated → send to sign-in (unless already there)
       if (!isAuthenticated && !isAuthRoute) return '/sign-in';
@@ -71,47 +71,70 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ReadyScreen(),
       ),
 
-      // Main screens (placeholders — filled in 6.3 and 6.4)
+      // Dashboard
       GoRoute(
         path: '/dashboard',
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
-          return DashboardPlaceholder(
+          return DashboardScreen(
             highlightEventId: extra?['highlightEventId'] as String?,
             recoveryEventId: extra?['recoveryEventId'] as String?,
           );
         },
       ),
+
+      // Session screen — voice + waveform avatar
       GoRoute(
         path: '/session',
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
-          return SessionPlaceholder(
-            sessionType: extra?['sessionType'] as String?,
-            eventId: extra?['eventId'] as String?,
+          final typeString = extra?['sessionType'] as String?;
+          return SessionScreen(
+            sessionType: _parseSessionType(typeString),
           );
         },
       ),
+
+      // In-moment card — class_3 popup
       GoRoute(
         path: '/in-moment',
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
-          return InMomentPlaceholder(
-            eventId: extra?['eventId'] as String?,
-            metricType: extra?['metricType'] as String?,
+          return InMomentCard(
+            eventId: extra?['eventId'] as String? ?? '',
+            interventionText: extra?['interventionText'] as String? ??
+                'Take a moment to check in with how you feel right now.',
           );
         },
       ),
+
+      // Settings
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const SettingsPlaceholder(),
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );
 });
 
-// HomeDecider — checks onboarding status and session windows
-// Sends user to the right screen based on current state
+/// Parses a session type string from notification payload or route extras.
+/// Defaults to morning if unknown.
+SessionType _parseSessionType(String? type) {
+  switch (type) {
+    case 'morning':
+      return SessionType.morning;
+    case 'evening':
+      return SessionType.evening;
+    case 'inMoment':
+    case 'in_moment':
+      return SessionType.inMoment;
+    default:
+      return SessionType.morning;
+  }
+}
+
+// HomeDecider — checks onboarding status and decides where to go.
+// Session auto-open by time-of-day window can be added later if needed.
 class HomeDecider extends StatelessWidget {
   const HomeDecider({super.key});
 
@@ -136,7 +159,8 @@ class HomeDecider extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        final onboardingComplete = userData['onboarding_complete'] as bool? ?? false;
+        final onboardingComplete =
+            userData['onboarding_complete'] as bool? ?? false;
         if (!onboardingComplete) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             context.go('/onboarding/welcome');
@@ -145,7 +169,6 @@ class HomeDecider extends StatelessWidget {
         }
 
         // Onboarding done — go to dashboard
-        // Session auto-open will be handled in 6.3 when session screen is built
         WidgetsBinding.instance.addPostFrameCallback((_) {
           context.go('/dashboard');
         });

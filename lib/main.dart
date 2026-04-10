@@ -1,8 +1,21 @@
+// lib/main.dart — App entry point.
+// Boot strategy:
+//   1. If Supabase credentials exist in secure storage → init full app
+//      (Firebase + Supabase + Riverpod + GoRouter + FCM listeners).
+//   2. If credentials are missing → show SetupScreen bootstrap (Build 2 flow).
+//      After credentials are saved, user restarts the app into the full flow.
+
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:workmanager/workmanager.dart';
+
 import 'core/health/health_data_manager.dart';
 import 'core/security/secure_storage.dart';
+import 'providers/notification_provider.dart';
+import 'router.dart';
+import 'services/notification_service.dart';
 
 const kHealthSyncTask = 'health_sync_task';
 
@@ -29,17 +42,84 @@ void callbackDispatcher() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Check for credentials before deciding boot path
   final url = await SecureStorage.instance.getSupabaseUrl();
   final anonKey = await SecureStorage.instance.getSupabaseAnonKey();
-  if (url != null && anonKey != null) {
-    await Supabase.initialize(url: url, anonKey: anonKey);
-  }
+  final hasCredentials = url != null && anonKey != null;
+
+  // Workmanager init runs in both paths
   await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
-  runApp(const VelaApp());
+
+  if (hasCredentials) {
+    // Full app boot — Firebase + Supabase + Riverpod + Router
+    try {
+      await Firebase.initializeApp();
+    } catch (e) {
+      debugPrint('Firebase init error: $e');
+    }
+
+    await Supabase.initialize(url: url, anonKey: anonKey);
+
+    runApp(const ProviderScope(child: VelaApp()));
+  } else {
+    // Bootstrap path — show SetupScreen so user can enter credentials
+    runApp(const VelaBootstrapApp());
+  }
 }
 
-class VelaApp extends StatelessWidget {
+// ---------------------------------------------------------------------------
+// Full app — runs after credentials are saved
+// ---------------------------------------------------------------------------
+
+class VelaApp extends ConsumerStatefulWidget {
   const VelaApp({super.key});
+
+  @override
+  ConsumerState<VelaApp> createState() => _VelaAppState();
+}
+
+class _VelaAppState extends ConsumerState<VelaApp> {
+  bool _notificationsInitialized = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final router = ref.watch(routerProvider);
+
+    // Initialize FCM listeners once after first frame
+    if (!_notificationsInitialized) {
+      _notificationsInitialized = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          await NotificationService.instance.requestPermission();
+          await initializeNotificationListeners(router, ref);
+
+          // Register device token if user is signed in
+          final userId = Supabase.instance.client.auth.currentUser?.id;
+          if (userId != null) {
+            await NotificationService.instance.registerToken(userId);
+          }
+        } catch (e) {
+          debugPrint('Notification init error: $e');
+        }
+      });
+    }
+
+    return MaterialApp.router(
+      title: 'Vela',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(),
+      routerConfig: router,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bootstrap app — runs when no credentials exist (Build 2 flow preserved)
+// ---------------------------------------------------------------------------
+
+class VelaBootstrapApp extends StatelessWidget {
+  const VelaBootstrapApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +208,8 @@ class _SetupScreenState extends State<SetupScreen> {
       );
 
       _log('🔄 Background sync registered — every 15 minutes.');
+      _log('');
+      _log('✅ Setup complete. Restart the app to enter the main flow.');
       setState(() => _loading = false);
     } catch (e) {
       _log('❌ Error: $e');
@@ -152,7 +234,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       fontSize: 32,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              const Text('Build 2 — Health Data Setup',
+              const Text('First-time setup',
                   style: TextStyle(color: Colors.white54, fontSize: 14)),
               const SizedBox(height: 24),
               TextField(
