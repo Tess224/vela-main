@@ -1,15 +1,33 @@
-import 'package:flutter/foundation.dart';
+// lib/providers/session_provider.dart
+//
+// Build 6.3 + Build 4 streaming integration.
+// Voice session lifecycle and state machine for the session screen.
+//
+// Flow:
+//   startSession()
+//     -> voice pipeline starts (VAD listening)
+//     -> immediately fires a kickoff turn with empty text
+//     -> Claude opens the session via /session/stream
+//     -> first SSE event captures session_id
+//     -> opening text streams in, speaks via TTS, user sees it
+//     -> returns to listening
+//   user speaks
+//     -> VAD detects end of speech -> STT -> /session/stream -> stream + speak
+//     -> loop
+//   endSession() -> /session/end -> transcript saved, post-processing runs
+
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
 
 import '../models/session_model.dart';
 import '../services/session_pipeline_service.dart';
 import '../voice/audio_player.dart';
-import '../voice/stt_client.dart';
 import '../voice/stream_handler.dart';
+import '../voice/stt_client.dart';
 import '../voice/tts_client.dart';
 import '../voice/voice_activity_detector.dart';
 
@@ -19,8 +37,6 @@ final sessionNotifierProvider =
 );
 
 class SessionNotifier extends StateNotifier<SessionModel> {
-
-
   final AudioRecorder _recorder = AudioRecorder();
   final VoiceActivityDetector _vad = VoiceActivityDetector();
   final STTClient _stt = STTClient();
@@ -40,28 +56,32 @@ class SessionNotifier extends StateNotifier<SessionModel> {
     );
   }
 
-  // -- Public API --
+  // ---------------------------------------------------------------------
+  // Public API
+  // ---------------------------------------------------------------------
 
   Future<void> startSession(SessionType type) async {
     state = state.copyWith(
       sessionState: SessionState.loading,
       sessionType: type,
       audioState: AudioState.processing,
+      sessionId: null,
+      recentExchanges: const [],
     );
 
     try {
-      final brief = await _pipelineService.fetchBrief(type.name);
+      state = state.copyWith(sessionState: SessionState.active);
 
-      state = state.copyWith(
-        sessionState: SessionState.active,
-        brief: brief,
-      );
+      // Fire the opening turn. Empty text + empty history tells the backend
+      // to auto-inject "Start the session." and have Claude generate the
+      // greeting. This replaces the old /brief + _speakResponse flow.
+      await _runSessionTurn(userText: '', isKickoff: true);
 
-      await _speakResponse(brief);
+      // After the opening is spoken, begin listening for the user
       await _beginVoicePipeline();
     } catch (error) {
-      state = state.copyWith(sessionState: SessionState.idle);
       debugPrint('Session start error: $error');
+      state = state.copyWith(sessionState: SessionState.idle);
     }
   }
 
@@ -84,45 +104,128 @@ class SessionNotifier extends StateNotifier<SessionModel> {
 
   Future<void> sendText(String text) async {
     if (text.trim().isEmpty) return;
-
-    state = state.copyWith(audioState: AudioState.processing);
-
-    final exchanges = List<Exchange>.from(state.recentExchanges)
-      ..add(Exchange(userText: text));
-    state = state.copyWith(recentExchanges: exchanges);
-
-    try {
-      final tokenStream = _pipelineService.sendMessage(
-        text,
-        sessionType: state.sessionType?.name ?? 'morning',
-      );
-
-      _streamHandler.reset();
-      state = state.copyWith(audioState: AudioState.speaking);
-
-      final fullResponse = await _streamHandler.handleStream(tokenStream);
-
-      final updated = List<Exchange>.from(state.recentExchanges);
-      if (updated.isNotEmpty) {
-        final last = updated.removeLast();
-        updated.add(Exchange(userText: last.userText, avatarText: fullResponse));
-      }
-
-      state = state.copyWith(
-        recentExchanges: updated,
-        audioState: AudioState.textMode,
-        waveformAmplitude: 0.0,
-      );
-    } catch (error) {
+    await _runSessionTurn(userText: text, isKickoff: false);
+    // Stay in text mode after sending (user explicitly chose text mode)
+    if (state.audioState != AudioState.textMode) {
       state = state.copyWith(audioState: AudioState.textMode);
-      debugPrint('Send text error: $error');
     }
   }
 
-  // -- Voice pipeline (private) --
+  // ---------------------------------------------------------------------
+  // Core turn runner — used by opening, voice, and text paths
+  // ---------------------------------------------------------------------
+
+  /// Runs a single turn against the session pipeline.
+  /// - On kickoff (userText empty, no sessionId), triggers the opening.
+  /// - On subsequent turns, appends the new user message to recentExchanges,
+  ///   streams the assistant response, and updates the exchange with it.
+  Future<void> _runSessionTurn({
+    required String userText,
+    required bool isKickoff,
+  }) async {
+    // Append user turn to exchanges (unless kickoff — backend auto-injects)
+    if (!isKickoff && userText.isNotEmpty) {
+      final exchanges = List<Exchange>.from(state.recentExchanges)
+        ..add(Exchange(userText: userText));
+      state = state.copyWith(recentExchanges: exchanges);
+    }
+
+    state = state.copyWith(audioState: AudioState.processing);
+
+    // Build conversation history from *completed* exchanges only.
+    // The current user turn we just added has empty avatarText, so it's
+    // excluded here — the backend will see it via the `message` field instead.
+    final history = _buildConversationHistory(excludeIncomplete: true);
+
+    _streamHandler.reset();
+    state = state.copyWith(audioState: AudioState.speaking);
+
+    try {
+      final tokenStream = _pipelineService.sendMessage(
+        userText,
+        sessionType: state.sessionType?.name ?? 'morning',
+        sessionId: state.sessionId,
+        conversationHistory: history,
+        onSessionStart: (metadata) {
+          // Capture session_id on turn 1, reuse on later turns
+          if (state.sessionId == null) {
+            state = state.copyWith(sessionId: metadata.sessionId);
+          }
+        },
+      );
+
+      final fullResponse = await _streamHandler.handleStream(tokenStream);
+
+      // Attach the response to the appropriate exchange
+      if (isKickoff) {
+        // Kickoff: the opening is a standalone assistant turn with no user text
+        final exchanges = List<Exchange>.from(state.recentExchanges)
+          ..add(Exchange(avatarText: fullResponse));
+        state = state.copyWith(recentExchanges: exchanges);
+      } else {
+        // Normal turn: update the last exchange (user-only) with the response
+        final updated = List<Exchange>.from(state.recentExchanges);
+        if (updated.isNotEmpty) {
+          final last = updated.removeLast();
+          updated.add(Exchange(
+            userText: last.userText,
+            avatarText: fullResponse,
+          ));
+        }
+        state = state.copyWith(recentExchanges: updated);
+      }
+
+      state = state.copyWith(waveformAmplitude: 0.0);
+    } catch (error) {
+      debugPrint('Session turn error: $error');
+      state = state.copyWith(waveformAmplitude: 0.0);
+      rethrow;
+    }
+  }
+
+  /// Converts recentExchanges into a flat conversation history for the backend.
+  /// Each Exchange with non-empty userText emits a user turn.
+  /// Each Exchange with non-empty avatarText emits an assistant turn.
+  /// If excludeIncomplete is true, exchanges missing avatarText (i.e. the
+  /// current pending turn) are filtered out — used when we're about to
+  /// send the user message via the `message` field rather than as history.
+  List<ConversationTurn> _buildConversationHistory({
+    required bool excludeIncomplete,
+  }) {
+    final history = <ConversationTurn>[];
+    for (final exchange in state.recentExchanges) {
+      final isIncomplete = exchange.avatarText.isEmpty;
+      if (excludeIncomplete && isIncomplete) continue;
+
+      if (exchange.userText.isNotEmpty) {
+        history.add(ConversationTurn(
+          role: ConversationRole.user,
+          content: exchange.userText,
+        ));
+      }
+      if (exchange.avatarText.isNotEmpty) {
+        history.add(ConversationTurn(
+          role: ConversationRole.assistant,
+          content: exchange.avatarText,
+        ));
+      }
+    }
+    return history;
+  }
+
+  // ---------------------------------------------------------------------
+  // Voice pipeline (private)
+  // ---------------------------------------------------------------------
 
   Future<void> _beginVoicePipeline() async {
-    if (!await _recorder.hasPermission()) return;
+    if (!await _recorder.hasPermission()) {
+      debugPrint('Voice pipeline: microphone permission not granted');
+      return;
+    }
+
+    // Cancel any stale subscription before starting a new one
+    await _vadSubscription?.cancel();
+    _vadSubscription = null;
 
     state = state.copyWith(audioState: AudioState.listening);
     _vadSubscription = _vad.events.listen(_onVADEvent);
@@ -136,11 +239,15 @@ class SessionNotifier extends StateNotifier<SessionModel> {
   }
 
   Future<void> _stopVoicePipeline() async {
-    _vadSubscription?.cancel();
+    await _vadSubscription?.cancel();
     _vadSubscription = null;
     _amplitudeTimer?.cancel();
     _amplitudeTimer = null;
-    await _recorder.stop();
+    try {
+      await _recorder.stop();
+    } catch (_) {
+      // Recorder may not be running — ignore
+    }
     await _audioPlayer.stop();
   }
 
@@ -161,11 +268,10 @@ class SessionNotifier extends StateNotifier<SessionModel> {
   Future<void> _onVADEvent(VADEvent event) async {
     switch (event) {
       case VADEvent.speechStart:
+        // Recording is already active — nothing to do here
         break;
 
       case VADEvent.speechEnd:
-        state = state.copyWith(audioState: AudioState.processing);
-
         try {
           final path = await _recorder.stop();
           if (path == null) {
@@ -179,35 +285,15 @@ class SessionNotifier extends StateNotifier<SessionModel> {
             return;
           }
 
-          final transcript = await _stt.transcribe(Uint8List.fromList(audioBytes));
-
-          final exchanges = List<Exchange>.from(state.recentExchanges)
-            ..add(Exchange(userText: transcript));
-          state = state.copyWith(recentExchanges: exchanges);
-
-          final tokenStream = _pipelineService.sendMessage(
-            transcript,
-            sessionType: state.sessionType?.name ?? 'morning',
-          );
-
-          _streamHandler.reset();
-          state = state.copyWith(audioState: AudioState.speaking);
-
-          final fullResponse = await _streamHandler.handleStream(tokenStream);
-
-          final updated = List<Exchange>.from(state.recentExchanges);
-          if (updated.isNotEmpty) {
-            final last = updated.removeLast();
-            updated.add(
-              Exchange(userText: last.userText, avatarText: fullResponse),
-            );
+          final transcript = await _stt.transcribe(audioBytes);
+          if (transcript.trim().isEmpty) {
+            await _beginVoicePipeline();
+            return;
           }
 
-          state = state.copyWith(
-            recentExchanges: updated,
-            waveformAmplitude: 0.0,
-          );
+          await _runSessionTurn(userText: transcript, isKickoff: false);
 
+          // After speaking response, resume listening for next turn
           await _beginVoicePipeline();
         } catch (error) {
           debugPrint('Voice pipeline error: $error');
@@ -217,37 +303,40 @@ class SessionNotifier extends StateNotifier<SessionModel> {
     }
   }
 
-  Future<void> _speakResponse(String text) async {
-    state = state.copyWith(audioState: AudioState.speaking);
-
-    try {
-      final audioBytes = await _tts.synthesize(text);
-      await _audioPlayer.playBytes(audioBytes, onAmplitude: _updateAmplitude);
-    } catch (error) {
-      debugPrint('Speak response error: $error');
-    }
-
-    state = state.copyWith(
-      audioState: AudioState.listening,
-      waveformAmplitude: 0.0,
-    );
-  }
-
-  void _updateAmplitude(double amplitude) {
-    state = state.copyWith(waveformAmplitude: amplitude);
-  }
+  // ---------------------------------------------------------------------
+  // Session end — build transcript, call backend
+  // ---------------------------------------------------------------------
 
   Future<void> _saveTranscriptAndTriggerExtraction() async {
-    if (state.recentExchanges.isEmpty) return;
+    final sessionId = state.sessionId;
+    if (sessionId == null || state.recentExchanges.isEmpty) {
+      debugPrint('Session end: no session_id or no exchanges — skipping');
+      return;
+    }
+
+    final transcript = _buildTranscriptText(state.recentExchanges);
 
     try {
       await _pipelineService.endSession(
-        exchanges: state.recentExchanges,
-        sessionType: state.sessionType?.name ?? 'morning',
+        sessionId: sessionId,
+        transcript: transcript,
       );
     } catch (error) {
       debugPrint('Save transcript error: $error');
     }
+  }
+
+  String _buildTranscriptText(List<Exchange> exchanges) {
+    return exchanges.map((e) {
+      final parts = <String>[];
+      if (e.userText.isNotEmpty) parts.add('USER: ${e.userText}');
+      if (e.avatarText.isNotEmpty) parts.add('VELA: ${e.avatarText}');
+      return parts.join('\n\n');
+    }).join('\n\n');
+  }
+
+  void _updateAmplitude(double amplitude) {
+    state = state.copyWith(waveformAmplitude: amplitude);
   }
 
   @override

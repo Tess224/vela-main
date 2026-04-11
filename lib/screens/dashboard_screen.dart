@@ -460,6 +460,26 @@ class _EmptyDashboard extends StatelessWidget {
               fontSize: 13,
             ),
           ),
+          const SizedBox(height: 32),
+          // Manual session start — also serves as the only entry point
+          // until time-of-day auto-open is added in Build 6.5.
+          ElevatedButton.icon(
+            onPressed: () {
+              final hour = DateTime.now().hour;
+              final sessionType = hour < 14 ? 'morning' : 'evening';
+              context.push('/session', extra: {'sessionType': sessionType});
+            },
+            icon: const Icon(Icons.mic, size: 18),
+            label: const Text('Start a session'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E75B6),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         ],
       ),
     );

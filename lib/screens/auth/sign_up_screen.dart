@@ -33,51 +33,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirm = _confirmController.text;
-
     if (email.isEmpty || password.isEmpty) {
       setState(() => _error = 'Please fill in all fields.');
       return;
     }
-
     if (password.length < 8) {
       setState(() => _error = 'Password must be at least 8 characters.');
       return;
     }
-
     if (password != confirm) {
       setState(() => _error = 'Passwords do not match.');
       return;
     }
-
     setState(() {
       _loading = true;
       _error = null;
     });
-
     try {
-      final response = await SupabaseService.instance.signUp(email, password);
-      final userId = response.user?.id;
-
+      // Step 1: Create auth account
+      final signUpResponse = await SupabaseService.instance.signUp(email, password);
+      final userId = signUpResponse.user?.id;
       if (userId == null) {
         setState(() => _error = 'Sign up failed. Try again.');
         return;
       }
-
-      // Save user ID for background sync
+      // Step 2: Explicitly sign in to establish a session.
+      // Without this, auth.uid() may be null when we INSERT into users,
+      // causing RLS to silently reject the row.
+      await SupabaseService.instance.signIn(email, password);
+      // Step 3: Save user ID for background sync
       await SecureStorage.instance.saveUserId(userId);
-
-      // Create user row in users table
+      // Step 4: Create user row in users table (RLS-protected, requires session)
       await SupabaseService.instance.createUserProfile(userId, {
         'onboarding_complete': false,
       });
-
       if (mounted) context.go('/onboarding/welcome');
     } catch (e) {
       final message = e.toString();
       if (message.contains('already registered')) {
         setState(() => _error = 'This email is already registered. Sign in instead.');
       } else {
-        setState(() => _error = 'Sign up failed. Please try again.');
+        setState(() => _error = 'Sign up failed: ' + message);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
