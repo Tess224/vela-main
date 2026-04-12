@@ -2,40 +2,40 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 
 import '../config/env.dart';
 
+/// Client for the session pipeline's /voice/transcribe endpoint.
+///
+/// The backend expects raw audio bytes (NOT multipart form data) with the
+/// Content-Type header indicating the audio container format. The backend
+/// reads the raw request body and forwards it to ElevenLabs STT.
+///
+/// We POST the m4a/AAC bytes directly because that's what the recorder
+/// produces (AudioEncoder.aacLc → AAC in MP4 container).
 class STTClient {
   Future<String> transcribe(Uint8List audioBytes) async {
     final uri = Uri.parse('${Env.sessionPipelineUrl}/voice/transcribe');
 
-    final request = http.MultipartRequest('POST', uri);
-    request.files.add(http.MultipartFile.fromBytes(
-      'file',
-      audioBytes,
-      filename: 'audio.m4a',
-      contentType: MediaType('audio', 'm4a'),
-    ));
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'audio/mp4'},
+      body: audioBytes,
+    );
 
-    final streamedResponse = await request.send();
-    final body = await streamedResponse.stream.bytesToString();
-
-    if (streamedResponse.statusCode != 200) {
+    if (response.statusCode != 200) {
       throw STTException(
-        'STT failed: ${streamedResponse.statusCode}',
-        statusCode: streamedResponse.statusCode,
-        body: body,
+        'STT failed: ${response.statusCode}',
+        statusCode: response.statusCode,
+        body: response.body,
       );
     }
 
-    final json = jsonDecode(body) as Map<String, dynamic>;
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
     final text = json['text'] as String?;
-
     if (text == null || text.trim().isEmpty) {
       throw STTException('STT returned empty transcript');
     }
-
     return text.trim();
   }
 }
