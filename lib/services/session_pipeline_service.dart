@@ -65,7 +65,7 @@ class SessionPipelineService {
 
     final client = HttpClient();
     final request = await client.postUrl(uri);
-    request.headers.set('Content-Type', 'application/json');
+    request.headers.set('Content-Type', 'application/json; charset=utf-8');
     request.headers.set('Accept', 'text/event-stream');
 
     final body = <String, dynamic>{
@@ -79,7 +79,13 @@ class SessionPipelineService {
       body['session_id'] = sessionId;
     }
 
-    request.write(jsonEncode(body));
+    // Encode to UTF-8 bytes ourselves and add() them. Using request.write()
+    // would try to encode the string with HttpClientRequest's default encoding
+    // (latin1), which rejects em-dashes, curly quotes, and any character above
+    // 0xFF — exactly the kind of characters Claude's responses contain.
+    final bodyBytes = utf8.encode(jsonEncode(body));
+    request.headers.contentLength = bodyBytes.length;
+    request.add(bodyBytes);
     final response = await request.close();
 
     if (response.statusCode != 200) {
@@ -184,11 +190,11 @@ class SessionPipelineService {
 
     final response = await http.post(
       uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
+      headers: {'Content-Type': 'application/json; charset=utf-8'},
+      body: utf8.encode(jsonEncode({
         'session_id': sessionId,
         'transcript': transcript,
-      }),
+      })),
     );
 
     if (response.statusCode != 200) {
