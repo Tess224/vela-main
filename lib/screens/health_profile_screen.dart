@@ -40,11 +40,24 @@ class _HealthProfileScreenState extends State<HealthProfileScreen> {
     'Vegetarian',
     'Vegan',
     'Pescatarian',
-    'Keto / Low carb',
-    'Halal',
-    'Kosher',
-    'Other',
+    'Culturally specific',
   ];
+
+  static const _dietToDb = {
+    'No restrictions': 'omnivore',
+    'Vegetarian': 'vegetarian',
+    'Vegan': 'vegan',
+    'Pescatarian': 'pescatarian',
+    'Culturally specific': 'culturally_specific',
+  };
+
+  static const _dbToDiet = {
+    'omnivore': 'No restrictions',
+    'vegetarian': 'Vegetarian',
+    'vegan': 'Vegan',
+    'pescatarian': 'Pescatarian',
+    'culturally_specific': 'Culturally specific',
+  };
   static const _commonConditions = [
     'Diabetes',
     'Hypertension',
@@ -124,7 +137,8 @@ class _HealthProfileScreenState extends State<HealthProfileScreen> {
 
         _smokes = data['smokes'] as bool?;
         _drinksAlcohol = data['drinks_alcohol'] as String?;
-        _dietaryPattern = data['dietary_pattern'] as String?;
+        final rawDiet = data['dietary_pattern'] as String?;
+                _dietaryPattern = _dbToDiet[rawDiet] ?? rawDiet;
       });
     } catch (e) {
       debugPrint('Failed to load health profile: $e');
@@ -209,7 +223,7 @@ class _HealthProfileScreenState extends State<HealthProfileScreen> {
         'known_allergies': allergies,
         'smokes': _smokes,
         'drinks_alcohol': _drinksAlcohol,
-        'dietary_pattern': _dietaryPattern,
+        'dietary_pattern': _dietToDb[_dietaryPattern] ?? _dietaryPattern,
         'profile_completeness': completeness,
         'last_profile_update': DateTime.now().toIso8601String(),
       };
