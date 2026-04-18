@@ -21,6 +21,8 @@ import 'screens/settings_screen.dart';
 import 'screens/health_profile_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/notification_settings_screen.dart';
+import 'screens/schedule_screen.dart';
+import 'screens/add_event_screen.dart';
 import 'screens/session_detail_screen.dart';
 import 'models/session_record_model.dart';
 
@@ -120,6 +122,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           final session = state.extra as SessionRecordModel;
           return SessionDetailScreen(session: session);
         },
+      ),
+
+      // Schedule
+      GoRoute(
+        path: '/schedule',
+        builder: (context, state) => const ScheduleScreen(),
+      ),
+
+      // Add event
+      GoRoute(
+        path: '/add-event',
+        builder: (context, state) => const AddEventScreen(),
       ),
 
       // Edit profile

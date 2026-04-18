@@ -98,6 +98,10 @@ class _VelaAppState extends ConsumerState<VelaApp> {
           final userId = Supabase.instance.client.auth.currentUser?.id;
           if (userId != null) {
             await NotificationService.instance.registerToken(userId);
+            // Sync health data on every app boot (no permission request —
+            // permissions are handled during onboarding)
+            final manager = HealthDataManager();
+            await manager.syncHealthData(userId: userId);
           }
         } catch (e) {
           debugPrint('Notification init error: $e');

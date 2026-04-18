@@ -11,6 +11,7 @@ import '../models/session_record_model.dart';
 import '../services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/user_provider.dart';
+import '../core/health/health_data_manager.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final String? highlightEventId;
@@ -59,6 +60,10 @@ class DashboardScreen extends ConsumerWidget {
 
               // Profile completion prompt
               const _ProfileCompletionCard(),
+              const SizedBox(height: 12),
+
+              // Next upcoming event
+              const _UpcomingEventCard(),
               const SizedBox(height: 16),
 
               // Memory-driven content (primary insight + recovery + events)
@@ -478,6 +483,71 @@ class _EmptyDashboard extends StatelessWidget {
           // Manual session start — also serves as the only entry point
           // until time-of-day auto-open is added in Build 6.5.
           ElevatedButton.icon(
+            onPressed: () async {
+              final userId = Supabase.instance.client.auth.currentUser?.id;
+              if (userId == null) return;
+              final logs = <String>[];
+              final manager = HealthDataManager();
+
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => StatefulBuilder(
+                  builder: (ctx, setDialogState) {
+                    if (logs.isEmpty) {
+                      // Start sync
+                      manager.requestPermissions().then((granted) {
+                        setDialogState(() => logs.add('Permissions: \$granted'));
+                        manager.syncHealthData(
+                          userId: userId,
+                          onLog: (msg) => setDialogState(() => logs.add(msg)),
+                        ).then((_) {
+                          setDialogState(() => logs.add('--- DONE ---'));
+                        });
+                      });
+                      logs.add('Starting health sync...');
+                    }
+                    return AlertDialog(
+                      backgroundColor: const Color(0xFF1A2533),
+                      title: const Text('Health Sync Log',
+                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                      content: SizedBox(
+                        width: double.maxFinite,
+                        height: 300,
+                        child: ListView(
+                          children: logs.map((l) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(l,
+                                style: TextStyle(
+                                    color: Colors.grey[300], fontSize: 12)),
+                          )).toList(),
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Close',
+                              style: TextStyle(color: Color(0xFF2E75B6))),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              );
+            },
+            icon: const Icon(Icons.monitor_heart, size: 18),
+            label: const Text('Sync health data'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1A2533),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
             onPressed: () {
               final hour = DateTime.now().hour;
               final sessionType = hour < 14 ? 'morning' : 'evening';
@@ -520,6 +590,91 @@ class _ErrorPlaceholder extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Upcoming event card
+// ---------------------------------------------------------------------------
+
+class _UpcomingEventCard extends StatelessWidget {
+  const _UpcomingEventCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _fetchNextEvent(),
+      builder: (context, snapshot) {
+        final event = snapshot.data;
+        if (event == null) return const SizedBox.shrink();
+
+        final title = event['title'] as String? ?? 'Event';
+        final startsAt = event['starts_at'] as String? ?? '';
+        final stressRisk = event['stress_risk'] as String? ?? 'medium';
+        final dt = DateTime.tryParse(startsAt)?.toLocal();
+        final timeStr = dt != null
+            ? (dt.hour.toString().padLeft(2, '0') + ':' + dt.minute.toString().padLeft(2, '0'))
+            : '';
+
+        return GestureDetector(
+          onTap: () => context.push('/schedule'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A2533),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.event_outlined, color: Colors.grey[400], size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Next up',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        title + (timeStr.isNotEmpty ? ' at ' + timeStr : ''),
+                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: stressRisk == 'high'
+                        ? const Color(0xFFE57373)
+                        : stressRisk == 'medium'
+                            ? const Color(0xFFD4A843)
+                            : const Color(0xFF4CAF50),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>?> _fetchNextEvent() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return null;
+    try {
+      final events = await SupabaseService.instance.fetchUpcomingEvents(userId);
+      if (events.isEmpty) return null;
+      return events.first;
+    } catch (_) {
+      return null;
+    }
   }
 }
 

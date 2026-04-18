@@ -109,6 +109,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 8),
 
+            // Schedule
+            _SettingsTile(
+              icon: Icons.calendar_today_outlined,
+              label: 'Schedule',
+              trailing: Icon(
+                Icons.chevron_right,
+                color: Colors.grey[600],
+              ),
+              onTap: () => context.push('/schedule'),
+            ),
+            const SizedBox(height: 8),
+
             // Health profile
             _SettingsTile(
               icon: Icons.favorite_outline,

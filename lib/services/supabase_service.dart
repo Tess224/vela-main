@@ -116,6 +116,29 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data as List);
   }
 
+  // --- Schedule ---
+  Future<List<Map<String, dynamic>>> fetchUpcomingEvents(String userId) async {
+    final data = await _client
+        .from('user_schedule')
+        .select('event_id, title, event_type, stress_risk, starts_at, ends_at')
+        .eq('user_id', userId)
+        .gte('starts_at', DateTime.now().toIso8601String())
+        .order('starts_at', ascending: true)
+        .limit(20);
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  Future<void> insertScheduleEvent(String userId, Map<String, dynamic> event) async {
+    await _client.from('user_schedule').insert({
+      'user_id': userId,
+      ...event,
+    });
+  }
+
+  Future<void> deleteScheduleEvent(String eventId) async {
+    await _client.from('user_schedule').delete().eq('event_id', eventId);
+  }
+
   // --- Device Tokens ---
 
   Future<void> upsertDeviceToken(String userId, String token) async {

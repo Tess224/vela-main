@@ -13,11 +13,11 @@ class HealthDataManager {
 
   HealthDataManager() {
     _tierDetector = SignalTierDetector(_health);
+    _health.configure(useHealthConnectIfAvailable: true);
   }
 
   static const List<HealthDataType> _fullTypes = [
     HealthDataType.HEART_RATE,
-    HealthDataType.RESTING_HEART_RATE,
     HealthDataType.HEART_RATE_VARIABILITY_SDNN,
     HealthDataType.STEPS,
     HealthDataType.SLEEP_ASLEEP,
@@ -27,29 +27,13 @@ class HealthDataManager {
     HealthDataType.ACTIVE_ENERGY_BURNED,
   ];
 
-  static const List<HealthDataType> _fallbackTypes = [
-    HealthDataType.HEART_RATE,
-    HealthDataType.STEPS,
-  ];
-
   Future<bool> requestPermissions() async {
     try {
       final granted = await _health.requestAuthorization(_fullTypes);
-      if (granted) {
-        debugPrint('Health: full permissions granted');
-        return true;
-      }
-    } catch (e) {
-      debugPrint('Health: full permission request failed: $e');
-    }
-
-    // Fall back to basic types
-    try {
-      final granted = await _health.requestAuthorization(_fallbackTypes);
-      debugPrint('Health: fallback permissions granted=$granted');
+      debugPrint('Health permissions: granted=' + granted.toString());
       return granted;
     } catch (e) {
-      debugPrint('Health: fallback permission request failed: $e');
+      debugPrint('Health permission error: ' + e.toString());
       return false;
     }
   }
@@ -70,33 +54,32 @@ class HealthDataManager {
       final now = DateTime.now();
       final since = now.subtract(const Duration(hours: 24));
 
-      // Try full types first, fall back if it fails
+      // Read each type individually
       List<HealthDataPoint> points = [];
       String source = 'health_connect';
+      final ok = <String>[];
+      final skipped = <String>[];
 
-      try {
-        points = await _health.getHealthDataFromTypes(
-          types: _fullTypes,
-          startTime: since,
-          endTime: now,
-        );
-        log('Full read: ${points.length} points');
-      } catch (e) {
-        log('Full read failed: $e — trying fallback');
+      for (final type in _fullTypes) {
         try {
-          points = await _health.getHealthDataFromTypes(
-            types: _fallbackTypes,
+          final result = await _health.getHealthDataFromTypes(
+            types: [type],
             startTime: since,
             endTime: now,
           );
-          source = 'hr_derived';
-          log('Fallback read: ${points.length} points');
-        } catch (e2) {
-          log('Fallback read also failed: $e2');
-          log('Make sure Samsung Health is synced and watch is connected.');
-          return;
+          if (result.isNotEmpty) {
+            points.addAll(result);
+            ok.add(type.name);
+          }
+        } catch (_) {
+          skipped.add(type.name);
         }
       }
+
+      if (ok.isEmpty) source = 'hr_derived';
+      if (ok.isNotEmpty) log('Read: ' + ok.join(', '));
+      if (skipped.isNotEmpty) log('Skipped: ' + skipped.join(', '));
+      log('Total points: ' + points.length.toString());
 
       if (points.isEmpty) {
         log('No health data in last 24 hours.');
@@ -105,8 +88,6 @@ class HealthDataManager {
       }
 
       final baseConfidence = kSourceConfidence[source] ?? 0.60;
-      log('Source: $source | Points: ${points.length}');
-
       final sleepWindow = await SleepWindowProcessor.fetchLatestWindow(userId);
       final baselines = await _fetchBaselines(userId);
 
@@ -119,7 +100,7 @@ class HealthDataManager {
       if (hrSamples.isNotEmpty) {
         hrvProxy = HrvCalculator.hrDerivedProxy(hrSamples);
         if (hrvProxy != null) {
-          log('HRV proxy: ${hrvProxy.toStringAsFixed(1)} ms');
+          log('HRV proxy: ' + hrvProxy.toStringAsFixed(1) + ' ms');
         }
       }
 
@@ -148,7 +129,7 @@ class HealthDataManager {
           contextTag: contextTag,
           outlierFlag: classified.outlierFlag,
           weightInCalculation: classified.weight,
-          notes: '${point.sourceName} via ${point.type.name}',
+          notes: point.sourceName + ' via ' + point.type.name,
           timestamp: point.dateFrom.toIso8601String(),
         ));
       }
@@ -163,7 +144,7 @@ class HealthDataManager {
           contextTag: 'confirmed_awake',
           outlierFlag: 'none',
           weightInCalculation: 1.0,
-          notes: 'hr-derived proxy from ${hrSamples.length} HR samples',
+          notes: 'hr-derived proxy from ' + hrSamples.length.toString() + ' HR samples',
           timestamp: DateTime.now().toIso8601String(),
         ));
       }
@@ -173,12 +154,12 @@ class HealthDataManager {
         return;
       }
 
-      log('Writing ${records.length} records to Supabase...');
+      log('Writing ' + records.length.toString() + ' records...');
       await SupabaseWriter.batchInsert(records);
-      log('Sync complete — ${records.length} records written');
+      log('Sync complete: ' + records.length.toString() + ' records written');
     } catch (e) {
-      debugPrint('Sync error: $e');
-      onLog?.call('Error: $e');
+      debugPrint('Sync error: ' + e.toString());
+      onLog?.call('Error: ' + e.toString());
     }
   }
 
