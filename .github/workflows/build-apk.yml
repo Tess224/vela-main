@@ -23,7 +23,10 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-warnings --no-fatal-infos
 
-      - run: flutter build apk --debug
+      - name: Build APK
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m"
+        run: flutter build apk --debug
 
       - uses: actions/upload-artifact@v4
         with:
