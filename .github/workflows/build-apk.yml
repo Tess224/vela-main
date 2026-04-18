@@ -20,14 +20,8 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Analyze (fail on errors only)
-        run: |
-          result=$(flutter analyze 2>&1)
-          echo "$result"
-          if echo "$result" | grep -q " error "; then
-            echo "::error::Analysis found errors"
-            exit 1
-          fi
+      - name: Analyze
+        run: flutter analyze --no-fatal-warnings --no-fatal-infos
 
       - run: flutter build apk --debug
 
