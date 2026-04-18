@@ -16,7 +16,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _notificationsEnabled = true;
 
   Future<void> _signOut() async {
     final confirm = await showDialog<bool>(
@@ -86,27 +85,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             // Profile section
             profileAsync.when(
-              data: (profile) => _ProfileSection(
-                firstName: profile?.firstName ?? '—',
-                email: Supabase.instance.client.auth.currentUser?.email ?? '—',
+              data: (profile) => GestureDetector(
+                onTap: () => context.push('/edit-profile'),
+                child: _ProfileSection(
+                  firstName: profile?.firstName ?? '—',
+                  email: Supabase.instance.client.auth.currentUser?.email ?? '—',
+                ),
               ),
               loading: () => const _ProfileSection(firstName: '...', email: '...'),
               error: (_, __) => const _ProfileSection(firstName: '—', email: '—'),
             ),
             const SizedBox(height: 32),
 
-            // Notifications toggle
+            // Notifications
             _SettingsTile(
               icon: Icons.notifications_outlined,
               label: 'Notifications',
-              trailing: Switch(
-                value: _notificationsEnabled,
-                activeColor: const Color(0xFF2E75B6),
-                onChanged: (value) {
-                  setState(() => _notificationsEnabled = value);
-                  // TODO Build 6.4+: persist to user preferences in Supabase
-                },
+              trailing: Icon(
+                Icons.chevron_right,
+                color: Colors.grey[600],
               ),
+              onTap: () => context.push('/notification-settings'),
+            ),
+            const SizedBox(height: 8),
+
+            // Health profile
+            _SettingsTile(
+              icon: Icons.favorite_outline,
+              label: 'Health profile',
+              trailing: Icon(
+                Icons.chevron_right,
+                color: Colors.grey[600],
+              ),
+              onTap: () => context.push('/health-profile'),
             ),
             const SizedBox(height: 8),
 

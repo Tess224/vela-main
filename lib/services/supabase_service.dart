@@ -104,6 +104,18 @@ class SupabaseService {
     return (data as List).isNotEmpty;
   }
 
+  // --- Session Records ---
+  Future<List<Map<String, dynamic>>> fetchRecentSessions(String userId) async {
+    final data = await _client
+        .from('session_records')
+        .select('session_id, session_type, started_at, ended_at, transcript, insight_delivered')
+        .eq('user_id', userId)
+        .not('ended_at', 'is', null)
+        .order('started_at', ascending: false)
+        .limit(10);
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
   // --- Device Tokens ---
 
   Future<void> upsertDeviceToken(String userId, String token) async {

@@ -18,6 +18,11 @@ import 'screens/onboarding/wearable_permissions_screen.dart';
 import 'screens/onboarding/welcome_screen.dart';
 import 'screens/session_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/health_profile_screen.dart';
+import 'screens/edit_profile_screen.dart';
+import 'screens/notification_settings_screen.dart';
+import 'screens/session_detail_screen.dart';
+import 'models/session_record_model.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -106,6 +111,33 @@ final routerProvider = Provider<GoRouter>((ref) {
                 'Take a moment to check in with how you feel right now.',
           );
         },
+      ),
+
+      // Session detail
+      GoRoute(
+        path: '/session-detail',
+        builder: (context, state) {
+          final session = state.extra as SessionRecordModel;
+          return SessionDetailScreen(session: session);
+        },
+      ),
+
+      // Edit profile
+      GoRoute(
+        path: '/edit-profile',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+
+      // Notification settings
+      GoRoute(
+        path: '/notification-settings',
+        builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+
+      // Health profile
+      GoRoute(
+        path: '/health-profile',
+        builder: (context, state) => const HealthProfileScreen(),
       ),
 
       // Settings

@@ -7,6 +7,9 @@ import 'package:go_router/go_router.dart';
 
 import '../models/monitoring_event_model.dart';
 import '../models/user_memory_model.dart';
+import '../models/session_record_model.dart';
+import '../services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/user_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -53,6 +56,10 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // Profile completion prompt
+              const _ProfileCompletionCard(),
+              const SizedBox(height: 16),
 
               // Memory-driven content (primary insight + recovery + events)
               memoryAsync.when(
@@ -183,16 +190,23 @@ class _DashboardBody extends StatelessWidget {
       );
       children.add(const SizedBox(height: 12));
       for (final event in memory.unresolvedEvents) {
-        children.add(_MonitoringEventCard(
-          event: event,
-          isHighlighted: event.eventId == highlightEventId,
+        children.add(GestureDetector(
+          onTap: () => showEventDetail(context, event),
+          child: _MonitoringEventCard(
+            event: event,
+            isHighlighted: event.eventId == highlightEventId,
+          ),
         ));
         children.add(const SizedBox(height: 8));
       }
     }
 
-    // Empty state
-    if (children.isEmpty) {
+    // Recent sessions
+    children.add(const SizedBox(height: 16));
+    children.add(const _RecentSessionsList());
+
+    // Empty state (only if no memory content AND no sessions)
+    if (children.length <= 2) {
       return const _EmptyDashboard();
     }
 
@@ -507,4 +521,340 @@ class _ErrorPlaceholder extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Profile completion card — shows when health profile is incomplete
+// ---------------------------------------------------------------------------
+
+class _ProfileCompletionCard extends StatelessWidget {
+  const _ProfileCompletionCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int>(
+      future: _fetchCompleteness(),
+      builder: (context, snapshot) {
+        final completeness = snapshot.data ?? 0;
+
+        // Hide card if profile is fully complete
+        if (completeness >= 100) return const SizedBox.shrink();
+
+        final filled = (completeness / 10).round(); // 10 fields total
+
+        return GestureDetector(
+          onTap: () => context.push('/health-profile'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A2533),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF2E75B6).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  color: Colors.grey[400],
+                  size: 22,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Complete your health profile',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$filled of 10 fields filled',
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.grey[600],
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<int> _fetchCompleteness() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return 0;
+
+    try {
+      final data = await Supabase.instance.client
+          .from('users')
+          .select('profile_completeness')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (data == null) return 0;
+      return (data['profile_completeness'] as int?) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Recent sessions list
+// ---------------------------------------------------------------------------
+
+class _RecentSessionsList extends StatelessWidget {
+  const _RecentSessionsList();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<SessionRecordModel>>(
+      future: _fetchSessions(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+
+        final sessions = snapshot.data;
+        if (sessions == null || sessions.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Recent sessions',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...sessions.map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _SessionCard(session: s),
+                )),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<List<SessionRecordModel>> _fetchSessions() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return [];
+    try {
+      final rows = await SupabaseService.instance.fetchRecentSessions(userId);
+      return rows.map((r) => SessionRecordModel.fromJson(r)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+}
+
+class _SessionCard extends StatelessWidget {
+  final SessionRecordModel session;
+
+  const _SessionCard({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/session-detail', extra: session),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A2533),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _icon(session.sessionType),
+              color: Colors.grey[500],
+              size: 18,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    session.typeLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    session.insightDelivered ?? 'No insight recorded',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              session.dateLabel,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _icon(String type) {
+    switch (type) {
+      case 'morning':
+        return Icons.wb_sunny_outlined;
+      case 'evening':
+        return Icons.bedtime_outlined;
+      case 'in_moment':
+        return Icons.flash_on_outlined;
+      default:
+        return Icons.chat_outlined;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Event detail bottom sheet
+// ---------------------------------------------------------------------------
+
+void showEventDetail(BuildContext context, MonitoringEventModel event) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF1A2533),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (_) => Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[700],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            event.metricLabel,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _DetailRow('Deviation score', event.deviationScore.toStringAsFixed(1)),
+          const SizedBox(height: 10),
+          _DetailRow('Severity', _classLabel(event.classification)),
+          const SizedBox(height: 10),
+          _DetailRow('Detected', _formatTime(event.detectedAt)),
+          const SizedBox(height: 10),
+          _DetailRow('Status', _statusLabel(event)),
+          if (event.contextResponse != null &&
+              event.contextResponse!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _DetailRow('Your response', event.contextResponse!),
+          ],
+          const SizedBox(height: 24),
+        ],
+      ),
+    ),
+  );
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 130,
+          child: Text(
+            label,
+            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _classLabel(String classification) {
+  switch (classification) {
+    case 'class_4':
+      return 'Critical';
+    case 'class_3':
+      return 'Significant';
+    case 'class_2':
+      return 'Notable';
+    default:
+      return 'Minor';
+  }
+}
+
+String _statusLabel(MonitoringEventModel event) {
+  if (event.resolution != null) return 'Resolved';
+  if (event.contextResponse == 'confirmed') return 'Context confirmed';
+  if (event.contextResponse == 'dismissed') return 'Dismissed';
+  if (event.responseReceived) return 'Responded';
+  return 'Awaiting context';
+}
+
+String _formatTime(DateTime dt) {
+  final hour = dt.hour.toString().padLeft(2, '0');
+  final minute = dt.minute.toString().padLeft(2, '0');
+  return '${dt.day}/${dt.month} at $hour:$minute';
 }

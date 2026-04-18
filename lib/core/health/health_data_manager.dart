@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'dart:io';
 import 'signal_tier_detector.dart';
 import 'hrv_calculator.dart';
 import 'sleep_window_processor.dart';
@@ -12,27 +10,9 @@ import 'supabase_writer.dart';
 class HealthDataManager {
   static final Health _health = Health();
   late final SignalTierDetector _tierDetector;
-  static int? _cachedSdkInt;
 
   HealthDataManager() {
     _tierDetector = SignalTierDetector(_health);
-  }
-
-  static Future<int> _getAndroidSdkInt() async {
-    if (_cachedSdkInt != null) return _cachedSdkInt!;
-    if (!Platform.isAndroid) return 99;
-    try {
-      final info = await DeviceInfoPlugin().androidInfo;
-      _cachedSdkInt = info.version.sdkInt;
-      return _cachedSdkInt!;
-    } catch (_) {
-      return 33;
-    }
-  }
-
-  static Future<bool> get _isAndroid13Plus async {
-    final sdk = await _getAndroidSdkInt();
-    return sdk >= 33;
   }
 
   static const List<HealthDataType> _fullTypes = [
@@ -53,15 +33,23 @@ class HealthDataManager {
   ];
 
   Future<bool> requestPermissions() async {
-    final isFullPath = await _isAndroid13Plus;
-    if (!isFullPath) {
-      debugPrint('Android 12 — skipping Health Connect permission dialog');
-      return true;
-    }
     try {
-      return await _health.requestAuthorization(_fullTypes);
+      final granted = await _health.requestAuthorization(_fullTypes);
+      if (granted) {
+        debugPrint('Health: full permissions granted');
+        return true;
+      }
     } catch (e) {
-      debugPrint('Permission error: $e');
+      debugPrint('Health: full permission request failed: $e');
+    }
+
+    // Fall back to basic types
+    try {
+      final granted = await _health.requestAuthorization(_fallbackTypes);
+      debugPrint('Health: fallback permissions granted=$granted');
+      return granted;
+    } catch (e) {
+      debugPrint('Health: fallback permission request failed: $e');
       return false;
     }
   }
@@ -76,35 +64,38 @@ class HealthDataManager {
     }
 
     try {
-      final isFullPath = await _isAndroid13Plus;
-      final sdkInt = await _getAndroidSdkInt();
-
-      log(isFullPath
-          ? 'Android $sdkInt — full Health Connect'
-          : 'Android $sdkInt — basic fallback HR + Steps');
-
-      // detectAndPersist now handles Android version detection internally
       final tier = await _tierDetector.detectAndPersist(userId);
-      final source = isFullPath ? 'health_connect' : 'hr_derived';
-      final baseConfidence = kSourceConfidence[source] ?? 0.60;
-
-      log('Tier: $tier | Source: $source');
+      log('Signal tier: $tier');
 
       final now = DateTime.now();
       final since = now.subtract(const Duration(hours: 24));
-      final types = isFullPath ? _fullTypes : _fallbackTypes;
 
+      // Try full types first, fall back if it fails
       List<HealthDataPoint> points = [];
+      String source = 'health_connect';
+
       try {
         points = await _health.getHealthDataFromTypes(
-          types: types,
+          types: _fullTypes,
           startTime: since,
           endTime: now,
         );
+        log('Full read: ${points.length} points');
       } catch (e) {
-        log('Could not read health data: $e');
-        log('Make sure Samsung Health is synced and watch is connected.');
-        return;
+        log('Full read failed: $e — trying fallback');
+        try {
+          points = await _health.getHealthDataFromTypes(
+            types: _fallbackTypes,
+            startTime: since,
+            endTime: now,
+          );
+          source = 'hr_derived';
+          log('Fallback read: ${points.length} points');
+        } catch (e2) {
+          log('Fallback read also failed: $e2');
+          log('Make sure Samsung Health is synced and watch is connected.');
+          return;
+        }
       }
 
       if (points.isEmpty) {
@@ -113,7 +104,8 @@ class HealthDataManager {
         return;
       }
 
-      log('Found ${points.length} data points');
+      final baseConfidence = kSourceConfidence[source] ?? 0.60;
+      log('Source: $source | Points: ${points.length}');
 
       final sleepWindow = await SleepWindowProcessor.fetchLatestWindow(userId);
       final baselines = await _fetchBaselines(userId);
