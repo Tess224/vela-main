@@ -33,31 +33,31 @@ class _HealthProfileScreenState extends State<HealthProfileScreen> {
   bool _loading = false;
   bool _saving = false;
 
-  static const _sexOptions = ['Male', 'Female', 'Other', 'Prefer not to say'];
-  static const _alcoholOptions = ['Never', 'Occasionally', 'Regularly'];
-  static const _dietOptions = [
-    'No restrictions',
-    'Vegetarian',
-    'Vegan',
-    'Pescatarian',
-    'Culturally specific',
-  ];
+  static const _sexOptions = ['male', 'female'];
 
-  static const _dietToDb = {
-    'No restrictions': 'omnivore',
-    'Vegetarian': 'vegetarian',
-    'Vegan': 'vegan',
-    'Pescatarian': 'pescatarian',
-    'Culturally specific': 'culturally_specific',
+  static const _sexLabels = {
+    'male': 'Male',
+    'female': 'Female',
   };
 
-  static const _dbToDiet = {
+  static const _alcoholOptions = ['never', 'occasionally', 'regularly'];
+
+  static const _alcoholLabels = {
+    'never': 'Never',
+    'occasionally': 'Occasionally',
+    'regularly': 'Regularly',
+  };
+
+  static const _dietOptions = ['omnivore', 'pescatarian', 'vegetarian', 'vegan', 'culturally_specific'];
+
+  static const _dietLabels = {
     'omnivore': 'No restrictions',
+    'pescatarian': 'Pescatarian',
     'vegetarian': 'Vegetarian',
     'vegan': 'Vegan',
-    'pescatarian': 'Pescatarian',
     'culturally_specific': 'Culturally specific',
   };
+
   static const _commonConditions = [
     'Diabetes',
     'Hypertension',
@@ -137,8 +137,7 @@ class _HealthProfileScreenState extends State<HealthProfileScreen> {
 
         _smokes = data['smokes'] as bool?;
         _drinksAlcohol = data['drinks_alcohol'] as String?;
-        final rawDiet = data['dietary_pattern'] as String?;
-                _dietaryPattern = _dbToDiet[rawDiet] ?? rawDiet;
+        _dietaryPattern = data['dietary_pattern'] as String?;
       });
     } catch (e) {
       debugPrint('Failed to load health profile: $e');
@@ -223,7 +222,7 @@ class _HealthProfileScreenState extends State<HealthProfileScreen> {
         'known_allergies': allergies,
         'smokes': _smokes,
         'drinks_alcohol': _drinksAlcohol,
-        'dietary_pattern': _dietToDb[_dietaryPattern] ?? _dietaryPattern,
+        'dietary_pattern': _dietaryPattern,
         'profile_completeness': completeness,
         'last_profile_update': DateTime.now().toIso8601String(),
       };
@@ -301,6 +300,7 @@ class _HealthProfileScreenState extends State<HealthProfileScreen> {
                           value: _sex,
                           items: _sexOptions,
                           hint: 'Select',
+                          labels: _sexLabels,
                           onChanged: (v) => setState(() => _sex = v),
                         ),
                         const SizedBox(height: 20),
@@ -409,6 +409,7 @@ class _HealthProfileScreenState extends State<HealthProfileScreen> {
                           value: _drinksAlcohol,
                           items: _alcoholOptions,
                           hint: 'Select',
+                          labels: _alcoholLabels,
                           onChanged: (v) =>
                               setState(() => _drinksAlcohol = v),
                         ),
@@ -421,6 +422,7 @@ class _HealthProfileScreenState extends State<HealthProfileScreen> {
                           value: _dietaryPattern,
                           items: _dietOptions,
                           hint: 'Select',
+                          labels: _dietLabels,
                           onChanged: (v) =>
                               setState(() => _dietaryPattern = v),
                         ),
@@ -538,12 +540,14 @@ class _DropdownField extends StatelessWidget {
   final List<String> items;
   final String hint;
   final ValueChanged<String?> onChanged;
+  final Map<String, String>? labels;
 
   const _DropdownField({
     required this.value,
     required this.items,
     required this.hint,
     required this.onChanged,
+    this.labels,
   });
 
   @override
@@ -563,7 +567,7 @@ class _DropdownField extends StatelessWidget {
           dropdownColor: const Color(0xFF0F1923),
           style: const TextStyle(color: Colors.white, fontSize: 15),
           items: items
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .map((e) => DropdownMenuItem(value: e, child: Text(labels?[e] ?? e)))
               .toList(),
           onChanged: onChanged,
         ),
