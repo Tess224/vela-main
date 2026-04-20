@@ -178,8 +178,10 @@ class SessionNotifier extends StateNotifier<SessionModel> {
       state = state.copyWith(waveformAmplitude: 0.0);
     } catch (error) {
       debugPrint('Session turn error: $error');
-      state = state.copyWith(waveformAmplitude: 0.0);
-      rethrow;
+      state = state.copyWith(
+        waveformAmplitude: 0.0,
+        audioState: AudioState.listening,
+      );
     }
   }
 
@@ -230,11 +232,13 @@ class SessionNotifier extends StateNotifier<SessionModel> {
     state = state.copyWith(audioState: AudioState.listening);
     _vadSubscription = _vad.events.listen(_onVADEvent);
 
+    final tempDir = Directory.systemTemp;
+    final tempPath = '${tempDir.path}/vela_recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
     await _recorder.start(
       const RecordConfig(encoder: AudioEncoder.aacLc),
-      path: '',
+      path: tempPath,
     );
-
+      
     _startAmplitudePolling();
   }
 
