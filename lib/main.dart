@@ -6,6 +6,7 @@
 //      After credentials are saved, user restarts the app into the full flow.
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,6 +19,11 @@ import 'router.dart';
 import 'services/notification_service.dart';
 
 const kHealthSyncTask = 'health_sync_task';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
+  debugPrint('FCM background message: ${message.data['type']}');
+}
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -58,6 +64,8 @@ Future<void> main() async {
     } catch (e) {
       debugPrint('Firebase init error: $e');
     }
+
+    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
 
     await Supabase.initialize(url: url, anonKey: anonKey);
 
