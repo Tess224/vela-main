@@ -58,4 +58,13 @@ class NotificationService {
   // Stream of messages when app is opened from background
   Stream<RemoteMessage> get onMessageOpenedApp =>
       FirebaseMessaging.onMessageOpenedApp;
+
+  // Background message handler for ambient check-in responses
+  static Future<void> handleBackgroundMessage(RemoteMessage message) async {
+    final type = message.data['type'] as String?;
+    if (type == 'ambient_checkin') {
+      debugPrint('FCM background: ambient checkin received');
+      // Background taps route through onMessageOpenedApp in notification_provider
+    }
+  }
 }
