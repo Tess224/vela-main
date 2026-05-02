@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../providers/user_provider.dart';
+import '../core/health/health_data_manager.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -130,6 +131,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 color: Colors.grey[600],
               ),
               onTap: () => context.push('/health-profile'),
+            ),
+            const SizedBox(height: 8),
+
+            // Manual health sync
+            _SettingsTile(
+              icon: Icons.sync,
+              label: 'Sync health data',
+              trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
+              onTap: () async {
+                final userId = Supabase.instance.client.auth.currentUser?.id;
+                if (userId == null) return;
+                final manager = HealthDataManager();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Syncing health data...')),
+                );
+                await manager.syncHealthData(userId: userId);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Sync complete')),
+                  );
+                }
+              },
             ),
             const SizedBox(height: 8),
 

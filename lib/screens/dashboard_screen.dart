@@ -30,6 +30,16 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F1923),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          final hour = DateTime.now().hour;
+          final sessionType = hour < 14 ? 'morning' : 'evening';
+          context.push('/session', extra: {'sessionType': sessionType});
+        },
+        backgroundColor: const Color(0xFF2E75B6),
+        icon: const Icon(Icons.mic, color: Colors.white),
+        label: const Text('Session', style: TextStyle(color: Colors.white)),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           color: const Color(0xFF2E75B6),
@@ -184,26 +194,20 @@ class _DashboardBody extends StatelessWidget {
     // Unresolved monitoring events
     if (memory.hasUnresolvedEvents) {
       children.add(
-        Text(
-          'Recent signals',
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
+        _SectionDropdown(
+          title: 'Recent signals',
+          children: memory.unresolvedEvents.map((event) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: GestureDetector(
+              onTap: () => showEventDetail(context, event),
+              child: _MonitoringEventCard(
+                event: event,
+                isHighlighted: event.eventId == highlightEventId,
+              ),
+            ),
+          )).toList(),
         ),
       );
-      children.add(const SizedBox(height: 12));
-      for (final event in memory.unresolvedEvents) {
-        children.add(GestureDetector(
-          onTap: () => showEventDetail(context, event),
-          child: _MonitoringEventCard(
-            event: event,
-            isHighlighted: event.eventId == highlightEventId,
-          ),
-        ));
-        children.add(const SizedBox(height: 8));
-      }
     }
 
     // Recent sessions
@@ -792,23 +796,12 @@ class _RecentSessionsList extends StatelessWidget {
         final sessions = snapshot.data;
         if (sessions == null || sessions.isEmpty) return const SizedBox.shrink();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Recent sessions',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...sessions.map((s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _SessionCard(session: s),
-                )),
-          ],
+        return _SectionDropdown(
+          title: 'Recent sessions',
+          children: sessions.map((s) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _SessionCard(session: s),
+          )).toList(),
         );
       },
     );
@@ -1012,4 +1005,34 @@ String _formatTime(DateTime dt) {
   final hour = dt.hour.toString().padLeft(2, '0');
   final minute = dt.minute.toString().padLeft(2, '0');
   return '${dt.day}/${dt.month} at $hour:$minute';
+}
+
+class _SectionDropdown extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _SectionDropdown({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(top: 4),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        iconColor: Colors.grey[500],
+        collapsedIconColor: Colors.grey[600],
+        initiallyExpanded: true,
+        children: children,
+      ),
+    );
+  }
 }
