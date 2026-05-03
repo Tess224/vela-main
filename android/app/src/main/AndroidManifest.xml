@@ -12,6 +12,9 @@
     <!-- Wake lock for background health sync via Workmanager -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
     <!-- Health Connect permissions (Build 2 — needed for real data on Android 12+) -->
     <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
     <uses-permission android:name="android.permission.health.READ_HEART_RATE_VARIABILITY"/>
@@ -56,6 +59,11 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+
+            <receiver android:exported="false"
+                android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+            <receiver android:exported="false"
+                android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

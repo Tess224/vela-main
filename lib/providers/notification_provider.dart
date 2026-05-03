@@ -1,7 +1,6 @@
 // lib/providers/notification_provider.dart — Notification routing.
 // Listens to FCM messages and routes to the correct screen via GoRouter.
-// Handles foreground, background, and terminated-state notifications.
-// Includes ambient check-in dialog for in-app responses.
+// Intercepts data-only messages to show local notifications with action buttons.
 
 import 'dart:convert';
 
@@ -11,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
 import '../services/notification_service.dart';
@@ -58,11 +58,8 @@ class NotificationRouter {
   }
 }
 
-// Holds the latest notification payload for the UI to react to
 final latestNotificationProvider = StateProvider<RemoteMessage?>((ref) => null);
 
-/// Initializes FCM listeners and routes incoming notifications.
-/// Call this once after the router is built (in main.dart or a wrapper widget).
 Future<void> initializeNotificationListeners(
   GoRouter router,
   WidgetRef ref,
@@ -70,12 +67,19 @@ Future<void> initializeNotificationListeners(
   final notificationRouter = NotificationRouter(router);
   final service = NotificationService.instance;
 
-  // 1. Terminated state — app launched from a notification tap
+  // Initialize local notifications for action buttons
+  await service.initializeLocal();
+
+  // Register the action tap handler — writes response to monitoring_events
+  service.onActionTap = (eventId, actionId) {
+    _writeEventResponse(eventId, actionId);
+  };
+
+  // 1. Terminated state
   final initialMessage = await service.getInitialMessage();
   if (initialMessage != null) {
     debugPrint('FCM: launched from notification');
     ref.read(latestNotificationProvider.notifier).state = initialMessage;
-    // Delay slightly to let router finish building
     Future.delayed(const Duration(milliseconds: 300), () {
       notificationRouter.handleNotificationTap(initialMessage);
     });
@@ -94,7 +98,13 @@ Future<void> initializeNotificationListeners(
     ref.read(latestNotificationProvider.notifier).state = message;
 
     final type = message.data['type'] as String?;
-    if (type == 'context_confirm' || type == 'in_moment') {
+    final hasActions = message.data['actions'] != null &&
+        (message.data['actions'] as String).isNotEmpty;
+
+    if (hasActions) {
+      // Show as local notification with action buttons
+      service.showWithActions(message);
+    } else if (type == 'context_confirm' || type == 'in_moment') {
       notificationRouter.handleNotificationTap(message);
     } else if (type == 'ambient_checkin') {
       _showCheckinDialog(router, message);
@@ -102,9 +112,21 @@ Future<void> initializeNotificationListeners(
   });
 }
 
+/// Write the user's action button response to monitoring_events
+Future<void> _writeEventResponse(String eventId, String actionId) async {
+  try {
+    await Supabase.instance.client.from('monitoring_events').update({
+      'context_response': actionId,
+      'response_received': true,
+    }).eq('event_id', eventId);
+    debugPrint('Event response written: $actionId for $eventId');
+  } catch (e) {
+    debugPrint('Event response write failed: $e');
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Ambient check-in dialog — shown when a check-in notification arrives
-// while the app is in the foreground
+// Ambient check-in dialog (unchanged)
 // ---------------------------------------------------------------------------
 
 void _showCheckinDialog(
@@ -114,7 +136,6 @@ void _showCheckinDialog(
   final data = message.data;
   final checkinId = data['checkin_id'] as String?;
 
-  // Question text: try data payload first, then notification body, then fallback
   final questionText = data['question_text'] as String? ??
       message.notification?.body ??
       'How are you doing?';
@@ -198,11 +219,8 @@ List<String> _parseOptionsList(String json) {
     if (decoded is List) {
       return decoded.map((e) => e.toString()).toList();
     }
-  } catch (_) {
-    // Fall through to manual parsing
-  }
+  } catch (_) {}
 
-  // Manual fallback for malformed JSON
   try {
     return json
         .replaceAll('[', '')
