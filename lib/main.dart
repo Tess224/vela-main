@@ -100,6 +100,11 @@ class _VelaAppState extends ConsumerState<VelaApp> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           await NotificationService.instance.requestPermission();
+          await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+            alert: false,
+            badge: false,
+            sound: false,
+          );
           await initializeNotificationListeners(router, ref);
 
           // Register device token if user is signed in
