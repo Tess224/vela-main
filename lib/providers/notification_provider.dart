@@ -98,13 +98,11 @@ Future<void> initializeNotificationListeners(
     ref.read(latestNotificationProvider.notifier).state = message;
 
     final type = message.data['type'] as String?;
-    final hasActions = message.data['actions'] != null &&
-        (message.data['actions'] as String).isNotEmpty;
 
-    if (hasActions) {
-      // Show as local notification with action buttons
+    if (type == 'context_confirm') {
+      // Always show via local plugin with action buttons
       service.showWithActions(message);
-    } else if (type == 'context_confirm' || type == 'in_moment') {
+    } else if (type == 'in_moment') {
       notificationRouter.handleNotificationTap(message);
     } else if (type == 'ambient_checkin') {
       _showCheckinDialog(router, message);
