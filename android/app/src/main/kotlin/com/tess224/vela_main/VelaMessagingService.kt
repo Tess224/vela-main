@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -12,15 +13,31 @@ import org.json.JSONArray
 
 class VelaMessagingService : FirebaseMessagingService() {
 
+    companion object {
+        private const val TAG = "VelaFCM"
+    }
+
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
-        val type = data["type"] ?: ""
+        val type = data["type"] ?: "unknown"
+
+        Log.d(TAG, "onMessageReceived called — type=$type")
+        Log.d(TAG, "data keys: ${data.keys}")
+        Log.d(TAG, "has notification field: ${message.notification != null}")
+        Log.d(TAG, "actions field: ${data["actions"]}")
 
         if (type == "context_confirm") {
+            Log.d(TAG, "Routing to showWithActions")
             showWithActions(data)
         } else {
+            Log.d(TAG, "Passing to super (Flutter handler)")
             super.onMessageReceived(message)
         }
+    }
+
+    override fun onNewToken(token: String) {
+        Log.d(TAG, "New FCM token generated: ${token.take(20)}...")
+        super.onNewToken(token)
     }
 
     private fun showWithActions(data: Map<String, String>) {
@@ -29,6 +46,8 @@ class VelaMessagingService : FirebaseMessagingService() {
         val title = data["title"] ?: "Vela"
         val body = data["body"] ?: ""
         val eventId = data["event_id"] ?: ""
+
+        Log.d(TAG, "showWithActions — title=$title body=$body eventId=$eventId")
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
@@ -64,11 +83,15 @@ class VelaMessagingService : FirebaseMessagingService() {
 
         // Parse and add action buttons
         val actionsJson = data["actions"]
+        Log.d(TAG, "Parsing actions JSON: $actionsJson")
+
         if (!actionsJson.isNullOrEmpty()) {
             try {
                 val arr = JSONArray(actionsJson)
+                Log.d(TAG, "Parsed ${arr.length()} actions")
                 for (i in 0 until arr.length()) {
                     val label = arr.getString(i)
+                    Log.d(TAG, "Adding action button: $label")
 
                     val actionIntent = Intent(context, NotificationActionReceiver::class.java)
                     actionIntent.action = "com.tess224.vela_main.NOTIFICATION_ACTION"
@@ -83,11 +106,15 @@ class VelaMessagingService : FirebaseMessagingService() {
                     builder.addAction(0, label, actionPending)
                 }
             } catch (e: Exception) {
-                // Ignore parse errors
+                Log.e(TAG, "Failed to parse actions: ${e.message}")
             }
+        } else {
+            Log.w(TAG, "No actions found in data payload")
         }
 
         val notifId = eventId.hashCode().and(0x7FFFFFFF) % 100000
+        Log.d(TAG, "Showing notification with id=$notifId")
         manager.notify(notifId, builder.build())
+        Log.d(TAG, "Notification shown successfully")
     }
 }
