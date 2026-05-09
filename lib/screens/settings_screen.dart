@@ -156,6 +156,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 8),
 
+            // Subscription
+            _SettingsTile(
+              icon: Icons.diamond_outlined,
+              label: 'Subscription',
+              trailing: Icon(
+                Icons.chevron_right,
+                color: Colors.grey[600],
+              ),
+              onTap: () => context.push('/subscription'),
+            ),
+            const SizedBox(height: 8),
+
             // About
             _SettingsTile(
               icon: Icons.info_outline,

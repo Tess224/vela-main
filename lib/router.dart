@@ -89,7 +89,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
-
+      
+      GoRoute(
+        path: '/subscription',
+        builder: (context, state) => const SubscriptionScreen(),
+      ),
+      
       // Session screen — voice + waveform avatar
       GoRoute(
         path: '/session',
