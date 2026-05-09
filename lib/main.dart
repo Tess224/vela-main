@@ -25,56 +25,6 @@ const kHealthSyncTask = 'health_sync_task';
  @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   debugPrint('FCM background message: ${message.data['type']}');
-
-  final type = message.data['type'] as String?;
-  if (type == 'context_confirm') {
-    await _showBackgroundNotification(message);
-  }
-}
-
-Future<void> _showBackgroundNotification(RemoteMessage message) async {
-  final plugin = FlutterLocalNotificationsPlugin();
-
-  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const initSettings = InitializationSettings(android: androidSettings);
-  await plugin.initialize(initSettings);
-
-  final data = message.data;
-  final title = data['title'] ?? 'Vela';
-  final body = data['body'] ?? '';
-
-  List<AndroidNotificationAction> androidActions = [];
-  final actionsJson = data['actions'] as String?;
-  if (actionsJson != null && actionsJson.isNotEmpty) {
-    try {
-      final decoded = jsonDecode(actionsJson);
-      if (decoded is List) {
-        androidActions = decoded.map((e) {
-          final label = e.toString();
-          return AndroidNotificationAction(label, label, showsUserInterface: false);
-        }).toList();
-      }
-    } catch (_) {}
-  }
-
-  final androidDetails = AndroidNotificationDetails(
-    'vela_alerts',
-    'Vela Alerts',
-    channelDescription: 'Health deviation alerts from Vela',
-    importance: Importance.high,
-    priority: Priority.high,
-    actions: androidActions,
-  );
-
-  final notifId = (data['event_id'] ?? '').hashCode.abs() % 100000;
-
-  await plugin.show(
-    notifId,
-    title,
-    body,
-    NotificationDetails(android: androidDetails),
-    payload: jsonEncode(data),
-  );
 }
 
 @pragma('vm:entry-point')
