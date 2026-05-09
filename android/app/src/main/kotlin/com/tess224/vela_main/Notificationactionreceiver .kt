@@ -11,6 +11,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val actionId = intent.getStringExtra("action_id") ?: return
         val eventId = intent.getStringExtra("event_id") ?: return
 
+        // Get inline reply text if user typed something
+        val remoteInput = androidx.core.app.RemoteInput.getResultsFromIntent(intent)
+        val userReply = remoteInput?.getCharSequence("user_reply")?.toString() ?: ""
+
         // Dismiss the notification
         val notifId = eventId.hashCode().and(0x7FFFFFFF) % 100000
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -20,7 +24,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val prefs = context.getSharedPreferences("vela_action_responses", Context.MODE_PRIVATE)
         prefs.edit()
             .putString("pending_event_id", eventId)
-            .putString("pending_action_id", actionId)
+            .putString("pending_action_id", if (userReply.isNotEmpty()) userReply else actionId)
             .apply()
 
         // Launch the app to process the response via Flutter/Supabase
