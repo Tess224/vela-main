@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Internet for Supabase, Railway endpoints, Firebase -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -44,6 +45,12 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false">
+
+        <!-- Disable Flutter's default FCM service so VelaMessagingService handles all messages -->
+        <service
+            android:name="io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService"
+            android:exported="false"
+            tools:node="remove" />
 
         <activity
             android:name=".MainActivity"
