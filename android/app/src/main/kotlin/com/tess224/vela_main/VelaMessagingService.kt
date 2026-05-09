@@ -98,26 +98,12 @@ class VelaMessagingService : FirebaseMessagingService() {
                     actionIntent.putExtra("action_id", label)
                     actionIntent.putExtra("event_id", eventId)
 
-                    if (label == "Something else") {
-                        // Inline text reply
-                        val actionPending = PendingIntent.getBroadcast(
-                            context, (eventId + label).hashCode(), actionIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-                        )
-                        val remoteInput = androidx.core.app.RemoteInput.Builder("user_reply")
-                            .setLabel("What's going on?")
-                            .build()
-                        val action = NotificationCompat.Action.Builder(0, label, actionPending)
-                            .addRemoteInput(remoteInput)
-                            .build()
-                        builder.addAction(action)
-                    } else {
-                        val actionPending = PendingIntent.getBroadcast(
-                            context, (eventId + label).hashCode(), actionIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                        )
-                        builder.addAction(0, label, actionPending)
-                    }
+                    val actionPending = PendingIntent.getBroadcast(
+                        context, (eventId + label).hashCode(), actionIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+
+                    builder.addAction(0, label, actionPending)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse actions: ${e.message}")
