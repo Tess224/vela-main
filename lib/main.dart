@@ -112,9 +112,10 @@ class _VelaAppState extends ConsumerState<VelaApp> {
       if (pubkey != null) {
         final userId = Supabase.instance.client.auth.currentUser?.id;
         if (userId != null) {
-          await SupabaseService.instance.updateUserProfile(userId, {
-            'solana_wallet': pubkey,
-          });
+          await Supabase.instance.client
+            .from('users')
+            .update({'solana_wallet': pubkey})
+            .eq('user_id', userId);
         }
       }
     } else if (uri.path.contains('sign')) {
