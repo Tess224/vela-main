@@ -34,7 +34,7 @@ class StreamHandler {
       if (match != null) {
         final sentence = _buffer.substring(0, match.end).trim();
         _buffer = _buffer.substring(match.end).trim();
-        _speakSentence(sentence);
+        await _speakSentenceAndWait(sentence);
       }
     }
 
