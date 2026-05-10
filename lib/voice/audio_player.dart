@@ -1,29 +1,53 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-
 import 'package:just_audio/just_audio.dart';
 
 class VelaAudioPlayer {
   final AudioPlayer _player = AudioPlayer();
+  final Queue<_PlayRequest> _queue = Queue();
+  bool _isPlaying = false;
 
   Future<void> playBytes(
     Uint8List audioBytes, {
     required void Function(double amplitude) onAmplitude,
   }) async {
-    debugPrint('AudioPlayer: playing ${audioBytes.length} bytes');
-    final amplitude = _computeAmplitude(audioBytes);
-    onAmplitude(amplitude);
+    final completer = Completer<void>();
+    _queue.add(_PlayRequest(audioBytes, onAmplitude, completer));
+    _processQueue();
+    return completer.future;
+  }
 
-    final source = _BytesAudioSource(audioBytes);
-    await _player.setAudioSource(source);
-    await _player.play();
+  Future<void> _processQueue() async {
+    if (_isPlaying || _queue.isEmpty) return;
 
-    await _player.playerStateStream.firstWhere(
-      (state) => state.processingState == ProcessingState.completed,
-    );
+    _isPlaying = true;
 
-    onAmplitude(0.0);
+    while (_queue.isNotEmpty) {
+      final request = _queue.removeFirst();
+      try {
+        debugPrint('AudioPlayer: playing ${request.bytes.length} bytes');
+        final amplitude = _computeAmplitude(request.bytes);
+        request.onAmplitude(amplitude);
+
+        final source = _BytesAudioSource(request.bytes);
+        await _player.setAudioSource(source);
+        await _player.play();
+        await _player.playerStateStream.firstWhere(
+          (state) => state.processingState == ProcessingState.completed,
+        );
+
+        request.onAmplitude(0.0);
+        request.completer.complete();
+      } catch (error) {
+        debugPrint('AudioPlayer error: $error');
+        request.onAmplitude(0.0);
+        request.completer.completeError(error);
+      }
+    }
+
+    _isPlaying = false;
   }
 
   double _computeAmplitude(Uint8List audioBytes) {
@@ -37,12 +61,22 @@ class VelaAudioPlayer {
   }
 
   Future<void> stop() async {
+    _queue.clear();
     await _player.stop();
   }
 
   void dispose() {
+    _queue.clear();
     _player.dispose();
   }
+}
+
+class _PlayRequest {
+  final Uint8List bytes;
+  final void Function(double amplitude) onAmplitude;
+  final Completer<void> completer;
+
+  _PlayRequest(this.bytes, this.onAmplitude, this.completer);
 }
 
 class _BytesAudioSource extends StreamAudioSource {
