@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
+import 'dart:collection';
+import 'dart:typed_data';
 
 import 'tts_client.dart';
 import 'audio_player.dart';
@@ -13,7 +15,10 @@ class StreamHandler {
 
   String _buffer = '';
   String _fullResponse = '';
-  final List<String> debugLog = [];
+
+  final Queue<Future<Uint8List>> _ttsQueue = Queue();
+  bool _isPlaying = false;
+  Completer<void>? _allPlayed;
 
   StreamHandler({
     required TTSClient tts,
@@ -24,7 +29,7 @@ class StreamHandler {
         _onAmplitude = onAmplitude;
 
   Future<String> handleStream(Stream<String> tokenStream) async {
-    debugLog.add('STREAM: started');
+    _allPlayed = Completer<void>();
 
     await for (final token in tokenStream) {
       _buffer += token;
@@ -34,41 +39,47 @@ class StreamHandler {
       if (match != null) {
         final sentence = _buffer.substring(0, match.end).trim();
         _buffer = _buffer.substring(match.end).trim();
-        await _speakSentenceAndWait(sentence);
+        _enqueueSentence(sentence);
       }
     }
 
-    debugLog.add('STREAM: tokens done');
-
     if (_buffer.trim().isNotEmpty) {
-      await _speakSentenceAndWait(_buffer.trim());
+      _enqueueSentence(_buffer.trim());
     }
 
-    debugLog.add('STREAM: complete');
+    // Wait for all audio to finish playing
+    if (_isPlaying || _ttsQueue.isNotEmpty) {
+      await _allPlayed?.future;
+    }
+
     return _fullResponse;
   }
 
-  void _speakSentence(String sentence) {
-    final preview = sentence.length > 30 ? '${sentence.substring(0, 30)}...' : sentence;
-    debugLog.add('TTS: "$preview"');
-    _tts.synthesize(sentence).then((audioBytes) {
-      debugLog.add('TTS: ${audioBytes.length} bytes');
-      _audioPlayer.playBytes(audioBytes, onAmplitude: _onAmplitude);
-    }).catchError((error) {
-      debugLog.add('TTS FAIL: $error');
-    });
+  void _enqueueSentence(String sentence) {
+    // Start TTS immediately (parallel synthesis)
+    final future = _tts.synthesize(sentence);
+    _ttsQueue.add(future);
+    // Kick off playback if not already running
+    _playLoop();
   }
 
-  Future<void> _speakSentenceAndWait(String sentence) async {
-    final preview = sentence.length > 30 ? '${sentence.substring(0, 30)}...' : sentence;
-    debugLog.add('TTS-W: "$preview"');
-    try {
-      final audioBytes = await _tts.synthesize(sentence);
-      debugLog.add('TTS-W: ${audioBytes.length} bytes, playing');
-      await _audioPlayer.playBytes(audioBytes, onAmplitude: _onAmplitude);
-      debugLog.add('TTS-W: done');
-    } catch (error) {
-      debugLog.add('TTS-W FAIL: $error');
+  Future<void> _playLoop() async {
+    if (_isPlaying) return;
+    _isPlaying = true;
+
+    while (_ttsQueue.isNotEmpty) {
+      final future = _ttsQueue.removeFirst();
+      try {
+        final audioBytes = await future;
+        await _audioPlayer.playBytes(audioBytes, onAmplitude: _onAmplitude);
+      } catch (error) {
+        debugPrint('TTS/playback error: $error');
+      }
+    }
+
+    _isPlaying = false;
+    if (_allPlayed != null && !_allPlayed!.isCompleted) {
+      _allPlayed!.complete();
     }
   }
 
@@ -77,5 +88,11 @@ class StreamHandler {
   void reset() {
     _buffer = '';
     _fullResponse = '';
+    _ttsQueue.clear();
+    _isPlaying = false;
+    if (_allPlayed != null && !_allPlayed!.isCompleted) {
+      _allPlayed!.complete();
+    }
+    _allPlayed = null;
   }
 }
