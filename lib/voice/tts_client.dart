@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
 
@@ -13,11 +14,14 @@ class TTSClient {
 
     final uri = Uri.parse('${Env.sessionPipelineUrl}/voice/synthesize');
 
+    debugPrint('TTS: requesting synthesis for "${sentence.substring(0, sentence.length.clamp(0, 50))}"');
     final response = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'text': sentence}),
     );
+
+    debugPrint('TTS: response status=${response.statusCode}, bytes=${response.bodyBytes.length}');
 
     if (response.statusCode != 200) {
       throw TTSException(

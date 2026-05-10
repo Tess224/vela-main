@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 import 'package:just_audio/just_audio.dart';
 
@@ -10,6 +11,7 @@ class VelaAudioPlayer {
     Uint8List audioBytes, {
     required void Function(double amplitude) onAmplitude,
   }) async {
+    debugPrint('AudioPlayer: playing ${audioBytes.length} bytes');
     final amplitude = _computeAmplitude(audioBytes);
     onAmplitude(amplitude);
 
