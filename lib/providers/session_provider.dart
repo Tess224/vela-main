@@ -339,7 +339,6 @@ class SessionNotifier extends StateNotifier<SessionModel> {
     }).join('\n\n');
   }
 
-  String get debugLines => _streamHandler.debugLog.join('\n');
 
   void _updateAmplitude(double amplitude) {
     state = state.copyWith(waveformAmplitude: amplitude);
