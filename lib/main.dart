@@ -20,6 +20,10 @@ import 'providers/notification_provider.dart';
 import 'router.dart';
 import 'services/notification_service.dart';
 
+import 'package:app_links/app_links.dart';
+import 'services/phantom_service.dart';
+import 'services/subscription_service.dart';
+
 const kHealthSyncTask = 'health_sync_task';
 
  @pragma('vm:entry-point')
@@ -91,6 +95,35 @@ class VelaApp extends ConsumerStatefulWidget {
 
 class _VelaAppState extends ConsumerState<VelaApp> {
   bool _notificationsInitialized = false;
+  AppLinks? _appLinks;
+
+  @override
+  void initState() {
+    super.initState();
+    _appLinks = AppLinks();
+    _appLinks!.uriLinkStream.listen(_handleDeepLink);
+  }
+
+  void _handleDeepLink(Uri uri) async {
+    if (uri.host != 'phantom-callback') return;
+
+    if (uri.path.contains('connect')) {
+      final pubkey = PhantomService.instance.parseConnectResponse(uri);
+      if (pubkey != null) {
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId != null) {
+          await SupabaseService.instance.updateUserProfile(userId, {
+            'solana_wallet': pubkey,
+          });
+        }
+      }
+    } else if (uri.path.contains('sign')) {
+      final signature = PhantomService.instance.parseSignResponse(uri);
+      if (signature != null) {
+        await SubscriptionService.instance.verifyPayment(signature);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

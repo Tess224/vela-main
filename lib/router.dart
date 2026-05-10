@@ -25,6 +25,7 @@ import 'screens/schedule_screen.dart';
 import 'screens/add_event_screen.dart';
 import 'screens/session_detail_screen.dart';
 import 'models/session_record_model.dart';
+import 'screens/subscription_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -157,6 +158,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/health-profile',
         builder: (context, state) => const HealthProfileScreen(),
+      ),
+      GoRoute(
+        path: '/subscription',
+        builder: (context, state) => const SubscriptionScreen(),
       ),
 
       // Settings
