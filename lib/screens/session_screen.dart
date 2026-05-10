@@ -54,9 +54,32 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
             ),
             Expanded(
               flex: 3,
-              child: _ExchangeDisplay(
-                exchanges: session.recentExchanges,
-                isTextMode: session.audioState == AudioState.textMode,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: _ExchangeDisplay(
+                      exchanges: session.recentExchanges,
+                      isTextMode: session.audioState == AudioState.textMode,
+                    ),
+                  ),
+                  Container(
+                    height: 80,
+                    width: double.infinity,
+                    color: Colors.black87,
+                    padding: const EdgeInsets.all(4),
+                    child: SingleChildScrollView(
+                      reverse: true,
+                      child: Text(
+                        ref.read(sessionNotifierProvider.notifier).debugLines,
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             if (session.audioState != AudioState.textMode)

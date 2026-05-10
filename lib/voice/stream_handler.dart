@@ -13,6 +13,7 @@ class StreamHandler {
 
   String _buffer = '';
   String _fullResponse = '';
+  final List<String> debugLog = [];
 
   StreamHandler({
     required TTSClient tts,
@@ -23,6 +24,8 @@ class StreamHandler {
         _onAmplitude = onAmplitude;
 
   Future<String> handleStream(Stream<String> tokenStream) async {
+    debugLog.add('STREAM: started');
+
     await for (final token in tokenStream) {
       _buffer += token;
       _fullResponse += token;
@@ -35,27 +38,37 @@ class StreamHandler {
       }
     }
 
+    debugLog.add('STREAM: tokens done');
+
     if (_buffer.trim().isNotEmpty) {
       await _speakSentenceAndWait(_buffer.trim());
     }
 
+    debugLog.add('STREAM: complete');
     return _fullResponse;
   }
 
   void _speakSentence(String sentence) {
+    final preview = sentence.length > 30 ? '${sentence.substring(0, 30)}...' : sentence;
+    debugLog.add('TTS: "$preview"');
     _tts.synthesize(sentence).then((audioBytes) {
+      debugLog.add('TTS: ${audioBytes.length} bytes');
       _audioPlayer.playBytes(audioBytes, onAmplitude: _onAmplitude);
     }).catchError((error) {
-      debugPrint('TTS error for sentence: $error');
+      debugLog.add('TTS FAIL: $error');
     });
   }
 
   Future<void> _speakSentenceAndWait(String sentence) async {
+    final preview = sentence.length > 30 ? '${sentence.substring(0, 30)}...' : sentence;
+    debugLog.add('TTS-W: "$preview"');
     try {
       final audioBytes = await _tts.synthesize(sentence);
+      debugLog.add('TTS-W: ${audioBytes.length} bytes, playing');
       await _audioPlayer.playBytes(audioBytes, onAmplitude: _onAmplitude);
+      debugLog.add('TTS-W: done');
     } catch (error) {
-      debugPrint('TTS error for final sentence: $error');
+      debugLog.add('TTS-W FAIL: $error');
     }
   }
 

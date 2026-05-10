@@ -159,10 +159,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/health-profile',
         builder: (context, state) => const HealthProfileScreen(),
       ),
-      GoRoute(
-        path: '/subscription',
-        builder: (context, state) => const SubscriptionScreen(),
-      ),
 
       // Settings
       GoRoute(
