@@ -243,6 +243,10 @@ class SessionNotifier extends StateNotifier<SessionModel> {
     final tempPath = '${tempDir.path}/vela_recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
     debugPrint('STARTING RECORDER');
 
+await _audioPlayer.stop();
+
+await Future.delayed(const Duration(milliseconds: 1200));
+
 await _recorder.start(
       const RecordConfig(encoder: AudioEncoder.aacLc),
       path: tempPath,
