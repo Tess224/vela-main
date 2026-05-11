@@ -22,6 +22,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 
 import '../models/session_model.dart';
 import '../services/session_pipeline_service.dart';
@@ -220,8 +222,13 @@ class SessionNotifier extends StateNotifier<SessionModel> {
   // ---------------------------------------------------------------------
 
   Future<void> _beginVoicePipeline() async {
-    if (!await _recorder.hasPermission()) {
-      debugPrint('Voice pipeline: microphone permission not granted');
+    final micStatus = await Permission.microphone.request();
+
+    debugPrint('Microphone status: $micStatus');
+
+    if (!micStatus.isGranted) {
+      debugPrint('Voice pipeline: microphone permission denied');
+      state = state.copyWith(audioState: AudioState.textMode);
       return;
     }
 
@@ -234,7 +241,9 @@ class SessionNotifier extends StateNotifier<SessionModel> {
 
     final tempDir = Directory.systemTemp;
     final tempPath = '${tempDir.path}/vela_recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    await _recorder.start(
+    debugPrint('STARTING RECORDER');
+
+await _recorder.start(
       const RecordConfig(encoder: AudioEncoder.aacLc),
       path: tempPath,
     );
@@ -270,7 +279,10 @@ class SessionNotifier extends StateNotifier<SessionModel> {
   }
 
   Future<void> _onVADEvent(VADEvent event) async {
+    debugPrint('VAD EVENT: $event');
+
     switch (event) {
+
       case VADEvent.speechStart:
         // Recording is already active — nothing to do here
         break;
@@ -289,7 +301,11 @@ class SessionNotifier extends StateNotifier<SessionModel> {
             return;
           }
 
+          debugPrint('Sending audio to STT: ${audioBytes.length} bytes');
+
           final transcript = await _stt.transcribe(audioBytes);
+
+          debugPrint('STT TRANSCRIPT: $transcript');
           if (transcript.trim().isEmpty) {
             await _beginVoicePipeline();
             return;
@@ -298,6 +314,7 @@ class SessionNotifier extends StateNotifier<SessionModel> {
           await _runSessionTurn(userText: transcript, isKickoff: false);
 
           // After speaking response, resume listening for next turn
+          await Future.delayed(const Duration(milliseconds: 400));
           await _beginVoicePipeline();
         } catch (error) {
           debugPrint('Voice pipeline error: $error');
