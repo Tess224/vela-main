@@ -1,5 +1,6 @@
+
 // lib/screens/dashboard_screen.dart — Dashboard with primary insight,
-// recovery summary, and recent sessions. Signals + goals moved to own tabs.
+// recovery summary, and unresolved monitoring events. Single-surface design.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,7 @@ import '../services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/user_provider.dart';
 import '../core/health/health_data_manager.dart';
+import '../services/supabase_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final String? highlightEventId;
@@ -41,6 +43,7 @@ class DashboardScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              // Header with greeting + settings icon
               profileAsync.when(
                 data: (profile) => _DashboardHeader(
                   userName: profile?.firstName ?? 'there',
@@ -56,10 +59,16 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
+
+              // Profile completion prompt
               const _ProfileCompletionCard(),
               const SizedBox(height: 12),
+
+              // Next upcoming event
               const _UpcomingEventCard(),
               const SizedBox(height: 16),
+
+              // Memory-driven content (primary insight + recovery + events)
               memoryAsync.when(
                 data: (memory) => _DashboardBody(
                   memory: memory,
@@ -102,6 +111,7 @@ class _DashboardHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        // Vela "V" mark
         Container(
           width: 22,
           height: 22,
@@ -189,7 +199,7 @@ class _VelaMarkPainter extends CustomPainter {
 }
 
 // ---------------------------------------------------------------------------
-// Body — primary insight + recovery + sessions
+// Body — primary insight + recovery + events
 // ---------------------------------------------------------------------------
 
 class _DashboardBody extends StatelessWidget {
@@ -205,19 +215,23 @@ class _DashboardBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final children = <Widget>[];
 
+    // Primary insight card
     if (memory.hasActivePattern) {
       children.add(_PrimaryInsightCard(pattern: memory.topActivePattern!));
       children.add(const SizedBox(height: 16));
     }
 
+    // Recovery summary card
     if (memory.hasOvernightSummary) {
       children.add(_RecoverySummaryCard(summary: memory.overnightSummary!));
       children.add(const SizedBox(height: 16));
     }
 
+    // Recent sessions
     children.add(const SizedBox(height: 16));
     children.add(const _RecentSessionsList());
 
+    // Empty state (only if no memory content AND no sessions)
     if (children.length <= 2) {
       return const _EmptyDashboard();
     }
@@ -242,32 +256,47 @@ class _PrimaryInsightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(left: 16, top: 6, bottom: 6),
-      decoration: const BoxDecoration(
-        border: Border(
-          left: BorderSide(color: Color(0xFFC9A6FF), width: 2),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A2533),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF2E75B6).withValues(alpha: 0.3),
+          width: 1,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'TOP PATTERN',
-            style: TextStyle(
-              fontFamily: 'SpaceMono',
-              fontSize: 9,
-              letterSpacing: 1.5,
-              color: Color(0xFFC9A6FF),
-            ),
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF2E75B6),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Top pattern',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 16),
           Text(
             pattern,
             style: const TextStyle(
-              fontFamily: 'Rajdhani',
-              color: Color(0xFFF0F2F8),
-              fontSize: 15,
-              height: 1.55,
+              color: Colors.white,
+              fontSize: 18,
+              height: 1.5,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -276,6 +305,7 @@ class _PrimaryInsightCard extends StatelessWidget {
     );
   }
 }
+        
 
 // ---------------------------------------------------------------------------
 // Recovery summary card
@@ -330,6 +360,10 @@ class _RecoverySummaryCard extends StatelessWidget {
   }
 }
 
+
+
+// _MonitoringEventCard removed — signals now displayed in SignalsScreen tab.
+
 // ---------------------------------------------------------------------------
 // Empty + error states
 // ---------------------------------------------------------------------------
@@ -367,6 +401,8 @@ class _EmptyDashboard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
+          // Manual session start — also serves as the only entry point
+          // until time-of-day auto-open is added in Build 6.5.
           ElevatedButton.icon(
             onPressed: () async {
               final userId = Supabase.instance.client.auth.currentUser?.id;
@@ -380,6 +416,7 @@ class _EmptyDashboard extends StatelessWidget {
                 builder: (_) => StatefulBuilder(
                   builder: (ctx, setDialogState) {
                     if (logs.isEmpty) {
+                      // Start sync
                       manager.requestPermissions().then((granted) {
                         setDialogState(() => logs.add('Permissions: \$granted'));
                         manager.syncHealthData(
@@ -395,6 +432,7 @@ class _EmptyDashboard extends StatelessWidget {
                       backgroundColor: const Color(0xFF0C0C10),
                       title: const Text('Health Sync Log',
                           style: TextStyle(color: Colors.white, fontSize: 16)),
+
                       content: SizedBox(
                         width: double.maxFinite,
                         height: 300,
@@ -410,7 +448,7 @@ class _EmptyDashboard extends StatelessWidget {
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(ctx).pop(),
-                          child: const Text('Close',
+                         child: const Text('Close',
                               style: TextStyle(color: Color(0xFFC9A6FF))),
                         ),
                       ],
@@ -442,6 +480,7 @@ class _EmptyDashboard extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFC9A6FF),
               foregroundColor: const Color(0xFF0A0010),
+              
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -498,7 +537,7 @@ class _UpcomingEventCard extends StatelessWidget {
         final stressRisk = event['stress_risk'] as String? ?? 'medium';
         final dt = DateTime.tryParse(startsAt)?.toLocal();
         final timeStr = dt != null
-            ? ('${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}')
+            ? (dt.hour.toString().padLeft(2, '0') + ':' + dt.minute.toString().padLeft(2, '0'))
             : '';
 
         return GestureDetector(
@@ -514,6 +553,7 @@ class _UpcomingEventCard extends StatelessWidget {
             child: Row(
               children: [
                 const Icon(Icons.event_outlined, color: Color(0xFF8A92A8), size: 20),
+                
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -521,22 +561,12 @@ class _UpcomingEventCard extends StatelessWidget {
                     children: [
                       const Text(
                         'NEXT UP',
-                        style: TextStyle(
-                          fontFamily: 'SpaceMono',
-                          color: Color(0xFF4A5168),
-                          fontSize: 9,
-                          letterSpacing: 1.0,
-                        ),
+                        style: TextStyle(fontFamily: 'SpaceMono', color: Color(0xFF4A5168), fontSize: 9, letterSpacing: 1.0),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         title + (timeStr.isNotEmpty ? ' at $timeStr' : ''),
-                        style: const TextStyle(
-                          fontFamily: 'Rajdhani',
-                          color: Color(0xFFF0F2F8),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: const TextStyle(fontFamily: 'Rajdhani', color: Color(0xFFF0F2F8), fontSize: 14, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
@@ -547,10 +577,10 @@ class _UpcomingEventCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: stressRisk == 'high'
-                        ? const Color(0xFFC9A6FF)
+                        ? const Color(0xFFE57373)
                         : stressRisk == 'medium'
-                            ? const Color(0xFF9B7FE0)
-                            : const Color(0xFF6B4FB0),
+                            ? const Color(0xFFD4A843)
+                            : const Color(0xFF4CAF50),
                   ),
                 ),
               ],
@@ -575,7 +605,7 @@ class _UpcomingEventCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Profile completion card
+// Profile completion card — shows when health profile is incomplete
 // ---------------------------------------------------------------------------
 
 class _ProfileCompletionCard extends StatelessWidget {
@@ -587,9 +617,11 @@ class _ProfileCompletionCard extends StatelessWidget {
       future: _fetchCompleteness(),
       builder: (context, snapshot) {
         final completeness = snapshot.data ?? 0;
+
+        // Hide card if profile is fully complete
         if (completeness >= 100) return const SizedBox.shrink();
 
-        final filled = (completeness / 10).round();
+        final filled = (completeness / 10).round(); // 10 fields total
 
         return GestureDetector(
           onTap: () => context.push('/health-profile'),
@@ -601,7 +633,6 @@ class _ProfileCompletionCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: const Color(0xFFC9A6FF).withValues(alpha: 0.3),
-              ),
             ),
             child: Row(
               children: [
@@ -653,12 +684,14 @@ class _ProfileCompletionCard extends StatelessWidget {
   Future<int> _fetchCompleteness() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return 0;
+
     try {
       final data = await Supabase.instance.client
           .from('users')
           .select('profile_completeness')
           .eq('user_id', userId)
           .maybeSingle();
+
       if (data == null) return 0;
       return (data['profile_completeness'] as int?) ?? 0;
     } catch (_) {
@@ -667,281 +700,88 @@ class _ProfileCompletionCard extends StatelessWidget {
   }
 }
 
+
 // ---------------------------------------------------------------------------
 // Recent sessions list
 // ---------------------------------------------------------------------------
 
-class _RecentSessionsList extends StatelessWidget {
-  const _RecentSessionsList();
+class _ActiveGoalsCard extends StatelessWidget {
+  const _ActiveGoalsCard();
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<SessionRecordModel>>(
-      future: _fetchSessions(),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchActiveGoals(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox.shrink();
-        }
+        final goals = snapshot.data ?? [];
+        if (goals.isEmpty) return const SizedBox.shrink();
 
-        final sessions = snapshot.data;
-        if (sessions == null || sessions.isEmpty) return const SizedBox.shrink();
-
-        return _SectionDropdown(
-          title: 'Recent sessions',
-          children: sessions.map((s) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _SessionCard(session: s),
-          )).toList(),
+        return GestureDetector(
+          onTap: () => context.push('/goals'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0A0F),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.flag_outlined, color: Colors.grey[500], size: 16),
+                    const SizedBox(width: 8),
+                    Text('Active goals', style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.w500)),
+                    const Spacer(),
+                    Icon(Icons.chevron_right, color: Colors.grey[700], size: 18),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...goals.take(3).map((g) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _goalColor(g['category'] as String? ?? ''),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          g['title'] as String? ?? '',
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        _timeframeLabel(g['timeframe'] as String? ?? ''),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                      ),
+                    ],
+                  ),
+                )),
+                if (goals.length > 3)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '+${goals.length - 3} more',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         );
       },
     );
   }
 
-  Future<List<SessionRecordModel>> _fetchSessions() async {
+  Future<List<Map<String, dynamic>>> _fetchActiveGoals() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return [];
-    try {
-      final rows = await SupabaseService.instance.fetchRecentSessions(userId);
-      return rows.map((r) => SessionRecordModel.fromJson(r)).toList();
-    } catch (_) {
-      return [];
-    }
-  }
-}
-
-class _SessionCard extends StatelessWidget {
-  final SessionRecordModel session;
-
-  const _SessionCard({required this.session});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push('/session-detail', extra: session),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0C0C10),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0x0FFFFFFF)),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              _icon(session.sessionType),
-              color: const Color(0xFFC9A6FF),
-              size: 14,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    session.typeLabel,
-                    style: const TextStyle(
-                      fontFamily: 'Rajdhani',
-                      color: Color(0xFFF0F2F8),
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (session.insightDelivered != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      session.insightDelivered!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'Rajdhani',
-                        color: Color(0xFF8A92A8),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              session.dateLabel,
-              style: const TextStyle(
-                fontFamily: 'SpaceMono',
-                color: Color(0xFF4A5168),
-                fontSize: 9,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  IconData _icon(String type) {
-    switch (type) {
-      case 'morning':
-        return Icons.wb_sunny_outlined;
-      case 'evening':
-        return Icons.bedtime_outlined;
-      case 'in_moment':
-        return Icons.flash_on_outlined;
-      default:
-        return Icons.chat_outlined;
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Event detail bottom sheet
-// ---------------------------------------------------------------------------
-
-void showEventDetail(BuildContext context, MonitoringEventModel event) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: const Color(0xFF0C0C10),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (_) => Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFF4A5168),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            event.metricLabel,
-            style: const TextStyle(
-              fontFamily: 'Rajdhani',
-              color: Color(0xFFF0F2F8),
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _DetailRow('Deviation score', event.deviationScore.toStringAsFixed(1)),
-          const SizedBox(height: 10),
-          _DetailRow('Severity', _classLabel(event.classification)),
-          const SizedBox(height: 10),
-          _DetailRow('Detected', _formatTime(event.detectedAt)),
-          const SizedBox(height: 10),
-          _DetailRow('Status', _statusLabel(event)),
-          if (event.contextResponse != null &&
-              event.contextResponse!.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _DetailRow('Your response', event.contextResponse!),
-          ],
-          const SizedBox(height: 24),
-        ],
-      ),
-    ),
-  );
-}
-
-class _DetailRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _DetailRow(this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 130,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'SpaceMono',
-              color: Color(0xFF4A5168),
-              fontSize: 10,
-              letterSpacing: 0.4,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'Rajdhani',
-              color: Color(0xFFF0F2F8),
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-String _classLabel(String classification) {
-  switch (classification) {
-    case 'class_4':
-      return 'Critical';
-    case 'class_3':
-      return 'Significant';
-    case 'class_2':
-      return 'Notable';
-    default:
-      return 'Minor';
-  }
-}
-
-String _statusLabel(MonitoringEventModel event) {
-  if (event.resolution != null) return 'Resolved';
-  if (event.contextResponse == 'confirmed') return 'Context confirmed';
-  if (event.contextResponse == 'dismissed') return 'Dismissed';
-  if (event.responseReceived) return 'Responded';
-  return 'Awaiting context';
-}
-
-String _formatTime(DateTime dt) {
-  final hour = dt.hour.toString().padLeft(2, '0');
-  final minute = dt.minute.toString().padLeft(2, '0');
-  return '${dt.day}/${dt.month} at $hour:$minute';
-}
-
-class _SectionDropdown extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-
-  const _SectionDropdown({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.only(top: 4),
-        title: Text(
-          title.toUpperCase(),
-          style: const TextStyle(
-            fontFamily: 'SpaceMono',
-            color: Color(0xFF8A92A8),
-            fontSize: 10,
-            letterSpacing: 1.6,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        iconColor: const Color(0xFF8A92A8),
-        collapsedIconColor: const Color(0xFF4A5168),
-        initiallyExpanded: true,
-        children: children,
-      ),
-    );
-  }
-}
+    if (userId == null) 
