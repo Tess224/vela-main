@@ -27,6 +27,57 @@ class SupabaseService {
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
+  // --- User Goals ---
+
+  Future<List<Map<String, dynamic>>> fetchUserGoals(String userId) async {
+    final data = await _client
+        .from('user_goals')
+        .select()
+        .eq('user_id', userId)
+        .order('priority', ascending: true)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<void> createGoal({
+    required String userId,
+    required String title,
+    required String category,
+    required String timeframe,
+  }) async {
+    await _client.from('user_goals').insert({
+      'user_id': userId,
+      'title': title,
+      'category': category,
+      'timeframe': timeframe,
+    });
+  }
+
+  Future<void> updateGoal(
+    String goalId, {
+    required String title,
+    required String category,
+    required String timeframe,
+  }) async {
+    await _client.from('user_goals').update({
+      'title': title,
+      'category': category,
+      'timeframe': timeframe,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('goal_id', goalId);
+  }
+
+  Future<void> updateGoalStatus(String goalId, String status) async {
+    await _client.from('user_goals').update({
+      'status': status,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('goal_id', goalId);
+  }
+
+  Future<void> deleteGoal(String goalId) async {
+    await _client.from('user_goals').delete().eq('goal_id', goalId);
+  }
+
   // --- User Profile ---
 
   Future<UserModel?> fetchUserProfile(String userId) async {

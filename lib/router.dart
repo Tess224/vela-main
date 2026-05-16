@@ -26,6 +26,9 @@ import 'screens/add_event_screen.dart';
 import 'screens/session_detail_screen.dart';
 import 'models/session_record_model.dart';
 import 'screens/subscription_screen.dart';
+import 'screens/goals_screen.dart';
+import 'screens/add_goal_screen.dart';
+import 'models/goal_model.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -158,6 +161,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/health-profile',
         builder: (context, state) => const HealthProfileScreen(),
+      ),
+
+      // Goals
+      GoRoute(
+        path: '/goals',
+        builder: (context, state) => const GoalsScreen(),
+      ),
+      GoRoute(
+        path: '/add-goal',
+        builder: (context, state) {
+          final existing = state.extra as GoalModel?;
+          return AddGoalScreen(existing: existing);
+        },
       ),
 
       // Settings

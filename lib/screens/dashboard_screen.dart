@@ -12,6 +12,7 @@ import '../services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/user_provider.dart';
 import '../core/health/health_data_manager.dart';
+import '../services/supabase_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final String? highlightEventId;
@@ -188,8 +189,12 @@ class _DashboardBody extends StatelessWidget {
     // Recovery summary card
     if (memory.hasOvernightSummary) {
       children.add(_RecoverySummaryCard(summary: memory.overnightSummary!));
-      children.add(const SizedBox(height: 24));
+      children.add(const SizedBox(height: 16));
     }
+
+    // Active goals card
+    children.add(const _ActiveGoalsCard());
+    children.add(const SizedBox(height: 24));
 
     // Unresolved monitoring events
     if (memory.hasUnresolvedEvents) {
@@ -780,6 +785,115 @@ class _ProfileCompletionCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Recent sessions list
 // ---------------------------------------------------------------------------
+
+class _ActiveGoalsCard extends StatelessWidget {
+  const _ActiveGoalsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchActiveGoals(),
+      builder: (context, snapshot) {
+        final goals = snapshot.data ?? [];
+        if (goals.isEmpty) return const SizedBox.shrink();
+
+        return GestureDetector(
+          onTap: () => context.push('/goals'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A2533),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.flag_outlined, color: Colors.grey[500], size: 16),
+                    const SizedBox(width: 8),
+                    Text('Active goals', style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.w500)),
+                    const Spacer(),
+                    Icon(Icons.chevron_right, color: Colors.grey[700], size: 18),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...goals.take(3).map((g) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _goalColor(g['category'] as String? ?? ''),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          g['title'] as String? ?? '',
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        _timeframeLabel(g['timeframe'] as String? ?? ''),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                      ),
+                    ],
+                  ),
+                )),
+                if (goals.length > 3)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '+${goals.length - 3} more',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchActiveGoals() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return [];
+    try {
+      return await SupabaseService.instance.fetchUserGoals(userId);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Color _goalColor(String category) {
+    switch (category) {
+      case 'performance': return const Color(0xFF2E75B6);
+      case 'recovery': return const Color(0xFF4CAF50);
+      case 'health': return const Color(0xFFE57373);
+      case 'skill': return const Color(0xFFD4A843);
+      case 'habit': return const Color(0xFFC9A6FF);
+      case 'lifestyle': return const Color(0xFF64B5F6);
+      default: return Colors.grey;
+    }
+  }
+
+  String _timeframeLabel(String timeframe) {
+    switch (timeframe) {
+      case 'short_term': return 'Short';
+      case 'mid_term': return 'Mid';
+      case 'long_term': return 'Long';
+      default: return '';
+    }
+  }
+}
 
 class _RecentSessionsList extends StatelessWidget {
   const _RecentSessionsList();

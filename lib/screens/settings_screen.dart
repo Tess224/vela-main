@@ -122,6 +122,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 8),
 
+            // Goals
+            _SettingsTile(
+              icon: Icons.flag_outlined,
+              label: 'Goals',
+              trailing: Icon(
+                Icons.chevron_right,
+                color: Colors.grey[600],
+              ),
+              onTap: () => context.push('/goals'),
+            ),
+            const SizedBox(height: 8),
+
             // Health profile
             _SettingsTile(
               icon: Icons.favorite_outline,
