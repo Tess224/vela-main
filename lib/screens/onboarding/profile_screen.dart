@@ -247,7 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(10),
       ),
       filled: true,
-      fillColor: const Color(0xFF0F1923),
+      fillColor: const Color(0xFF000000),
     );
   }
 }

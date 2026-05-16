@@ -12,9 +12,9 @@ class SessionDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1923),
+      backgroundColor: const Color(0xFF000000),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0F1923),
+        backgroundColor: const Color(0xFF000000),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -32,7 +32,7 @@ class SessionDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A2533),
+                color: const Color(0xFF0A0A0F),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -78,10 +78,10 @@ class SessionDetailScreen extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A2533),
+                  color: const Color(0xFF0A0A0F),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF2E75B6).withValues(alpha: 0.3),
+                    color: const Color(0xFFC9A6FF).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(
@@ -108,7 +108,7 @@ class SessionDetailScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A2533),
+                color: const Color(0xFF0A0A0F),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(

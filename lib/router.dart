@@ -24,6 +24,8 @@ import 'screens/notification_settings_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/add_event_screen.dart';
 import 'screens/session_detail_screen.dart';
+import 'screens/notifications_screen.dart';
+import 'screens/vela_shell.dart';
 import 'models/session_record_model.dart';
 import 'screens/subscription_screen.dart';
 import 'screens/goals_screen.dart';
@@ -82,12 +84,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ReadyScreen(),
       ),
 
-      // Dashboard
+      // Dashboard — wrapped in VelaShell with bottom nav
       GoRoute(
         path: '/dashboard',
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
-          return DashboardScreen(
+          return VelaShell(
             highlightEventId: extra?['highlightEventId'] as String?,
             recoveryEventId: extra?['recoveryEventId'] as String?,
           );
@@ -97,6 +99,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/subscription',
         builder: (context, state) => const SubscriptionScreen(),
+      ),
+
+      // Notifications inbox
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
       
       // Session screen — voice + waveform avatar
@@ -213,8 +221,8 @@ class HomeDecider extends StatelessWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Scaffold(
-            backgroundColor: Color(0xFF050507),
-            body: Center(child: CircularProgressIndicator()),
+            backgroundColor: Color(0xFF000000),
+            body: Center(child: CircularProgressIndicator(color: Color(0xFFC9A6FF))),
           );
         }
 

@@ -225,13 +225,13 @@ class _MicStatusIndicator extends StatelessWidget {
 
     switch (audioState) {
       case AudioState.listening:
-        color = const Color(0xFF375623);
+        color = const Color(0xFF6AB1F0);
         icon = Icons.mic;
       case AudioState.processing:
-        color = const Color(0xFFD4A843);
+        color = const Color(0xFF9B7FE0);
         icon = Icons.hourglass_top;
       case AudioState.speaking:
-        color = const Color(0xFF2E75B6);
+        color = const Color(0xFFC9A6FF);
         icon = Icons.volume_up;
       case AudioState.textMode:
         color = Colors.grey;
@@ -293,7 +293,7 @@ class _TextInputBarState extends State<_TextInputBar> {
                 hintText: 'Type a message...',
                 hintStyle: TextStyle(color: Colors.grey[600]),
                 filled: true,
-                fillColor: const Color(0xFF1A1A2E),
+                fillColor: const Color(0xFF0A0A0F),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
@@ -309,7 +309,7 @@ class _TextInputBarState extends State<_TextInputBar> {
           const SizedBox(width: 8),
           IconButton(
             onPressed: _submit,
-            icon: const Icon(Icons.send, color: Color(0xFF2E75B6)),
+            icon: const Icon(Icons.send, color: Color(0xFFC9A6FF)),
           ),
         ],
       ),

@@ -140,9 +140,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1923),
+      backgroundColor: const Color(0xFF000000),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0F1923),
+        backgroundColor: const Color(0xFF000000),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -281,7 +281,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         borderRadius: BorderRadius.circular(10),
       ),
       filled: true,
-      fillColor: const Color(0xFF0F1923),
+      fillColor: const Color(0xFF000000),
     );
   }
 }

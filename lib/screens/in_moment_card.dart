@@ -69,7 +69,7 @@ class _InMomentCardState extends State<InMomentCard>
     final controller = TextEditingController();
     final result = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: const Color(0xFF1A2533),
+      backgroundColor: const Color(0xFF0A0A0F),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -103,7 +103,7 @@ class _InMomentCardState extends State<InMomentCard>
                   hintText: 'A few words...',
                   hintStyle: TextStyle(color: Colors.grey[600]),
                   filled: true,
-                  fillColor: const Color(0xFF0F1923),
+                  fillColor: const Color(0xFF000000),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -120,7 +120,8 @@ class _InMomentCardState extends State<InMomentCard>
                   onPressed: () =>
                       Navigator.of(sheetContext).pop(controller.text.trim()),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E75B6),
+                    backgroundColor: const Color(0xFFC9A6FF),
+                    foregroundColor: const Color(0xFF0A0010),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -206,7 +207,8 @@ class _InMomentCardState extends State<InMomentCard>
                     child: ElevatedButton(
                       onPressed: () => _dismiss(confirmed: true),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E75B6),
+                        backgroundColor: const Color(0xFFC9A6FF),
+                        foregroundColor: const Color(0xFF0A0010),
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -216,7 +218,7 @@ class _InMomentCardState extends State<InMomentCard>
                         'Got it',
                         style: TextStyle(
                           fontSize: 18,
-                          color: Colors.white,
+                          color: Color(0xFF0A0010),
                         ),
                       ),
                     ),

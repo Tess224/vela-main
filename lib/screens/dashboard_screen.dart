@@ -30,21 +30,11 @@ class DashboardScreen extends ConsumerWidget {
     final memoryAsync = ref.watch(userMemoryProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1923),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          final hour = DateTime.now().hour;
-          final sessionType = hour < 14 ? 'morning' : 'evening';
-          context.push('/session', extra: {'sessionType': sessionType});
-        },
-        backgroundColor: const Color(0xFF2E75B6),
-        icon: const Icon(Icons.mic, color: Colors.white),
-        label: const Text('Session', style: TextStyle(color: Colors.white)),
-      ),
+      backgroundColor: const Color(0xFF000000),
       body: SafeArea(
         child: RefreshIndicator(
-          color: const Color(0xFF2E75B6),
-          backgroundColor: const Color(0xFF1A2533),
+          color: const Color(0xFFC9A6FF),
+          backgroundColor: const Color(0xFF0C0C10),
           onRefresh: () async {
             ref.invalidate(userProfileProvider);
             ref.invalidate(userMemoryProvider);
@@ -87,7 +77,7 @@ class DashboardScreen extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(vertical: 60),
                   child: Center(
                     child: CircularProgressIndicator(
-                      color: Color(0xFF2E75B6),
+                      color: Color(0xFFC9A6FF),
                     ),
                   ),
                 ),
@@ -120,35 +110,52 @@ class _DashboardHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        // Vela "V" mark
+        Container(
+          width: 22,
+          height: 22,
+          margin: const EdgeInsets.only(right: 10),
+          child: CustomPaint(painter: _VelaMarkPainter()),
+        ),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _greeting(),
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 14,
+                _greeting().toUpperCase(),
+                style: const TextStyle(
+                  fontFamily: 'SpaceMono',
+                  fontSize: 8,
+                  letterSpacing: 1.5,
+                  color: Color(0xFF4A5168),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 userName,
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Rajdhani',
+                  color: Color(0xFFF0F2F8),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
-        IconButton(
-          onPressed: onSettingsTap,
-          icon: Icon(
-            Icons.settings_outlined,
-            color: Colors.grey[400],
-            size: 24,
+        GestureDetector(
+          onTap: () => context.push('/notifications'),
+          child: const Padding(
+            padding: EdgeInsets.all(4),
+            child: Icon(Icons.notifications_outlined, color: Color(0xFF8A92A8), size: 18),
+          ),
+        ),
+        const SizedBox(width: 14),
+        GestureDetector(
+          onTap: onSettingsTap,
+          child: const Padding(
+            padding: EdgeInsets.all(4),
+            child: Icon(Icons.settings_outlined, color: Color(0xFF8A92A8), size: 18),
           ),
         ),
       ],
@@ -161,6 +168,33 @@ class _DashboardHeader extends StatelessWidget {
     if (hour < 17) return 'Good afternoon,';
     return 'Good evening,';
   }
+}
+
+class _VelaMarkPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFC9A6FF)
+      ..strokeWidth = 1.6
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path()
+      ..moveTo(size.width * 0.15, size.height * 0.2)
+      ..lineTo(size.width * 0.5, size.height * 0.8)
+      ..lineTo(size.width * 0.85, size.height * 0.2);
+    canvas.drawPath(path, paint);
+
+    canvas.drawCircle(
+      Offset(size.width * 0.5, size.height * 0.5),
+      size.width * 0.07,
+      Paint()..color = const Color(0xFFC9A6FF),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,29 +224,6 @@ class _DashboardBody extends StatelessWidget {
     if (memory.hasOvernightSummary) {
       children.add(_RecoverySummaryCard(summary: memory.overnightSummary!));
       children.add(const SizedBox(height: 16));
-    }
-
-    // Active goals card
-    children.add(const _ActiveGoalsCard());
-    children.add(const SizedBox(height: 24));
-
-    // Unresolved monitoring events
-    if (memory.hasUnresolvedEvents) {
-      children.add(
-        _SectionDropdown(
-          title: 'Recent signals',
-          children: memory.unresolvedEvents.map((event) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: GestureDetector(
-              onTap: () => showEventDetail(context, event),
-              child: _MonitoringEventCard(
-                event: event,
-                isHighlighted: event.eventId == highlightEventId,
-              ),
-            ),
-          )).toList(),
-        ),
-      );
     }
 
     // Recent sessions
@@ -293,6 +304,7 @@ class _PrimaryInsightCard extends StatelessWidget {
     );
   }
 }
+        
 
 // ---------------------------------------------------------------------------
 // Recovery summary card
@@ -307,29 +319,26 @@ class _RecoverySummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A2533),
+        color: const Color(0xFF0C0C10),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x0FFFFFFF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              Icon(
-                Icons.bedtime_outlined,
-                color: Colors.grey[400],
-                size: 18,
-              ),
-              const SizedBox(width: 8),
+              Icon(Icons.bedtime_outlined, color: Color(0xFFC9A6FF), size: 13),
+              SizedBox(width: 8),
               Text(
-                'Last night',
+                'LAST NIGHT',
                 style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5,
+                  fontFamily: 'SpaceMono',
+                  fontSize: 9,
+                  letterSpacing: 1.5,
+                  color: Color(0xFFC9A6FF),
                 ),
               ),
             ],
@@ -338,9 +347,10 @@ class _RecoverySummaryCard extends StatelessWidget {
           Text(
             summary,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              height: 1.5,
+              fontFamily: 'Rajdhani',
+              color: Color(0xFF8A92A8),
+              fontSize: 13.5,
+              height: 1.55,
             ),
           ),
         ],
@@ -349,110 +359,9 @@ class _RecoverySummaryCard extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Monitoring event card
-// ---------------------------------------------------------------------------
 
-class _MonitoringEventCard extends StatelessWidget {
-  final MonitoringEventModel event;
-  final bool isHighlighted;
 
-  const _MonitoringEventCard({
-    required this.event,
-    required this.isHighlighted,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A2533),
-        borderRadius: BorderRadius.circular(12),
-        border: isHighlighted
-            ? Border.all(
-                color: const Color(0xFF2E75B6),
-                width: 2,
-              )
-            : null,
-      ),
-      child: Row(
-        children: [
-          // Severity dot
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _classificationColor(event.classification),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Metric label + context status
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.metricLabel,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _contextLabel(event),
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Time
-          Text(
-            _timeAgo(event.detectedAt),
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _classificationColor(String classification) {
-    switch (classification) {
-      case 'class_4':
-        return const Color(0xFFE57373); // red — auto-session
-      case 'class_3':
-        return const Color(0xFFD4A843); // amber — context confirm
-      case 'class_2':
-        return const Color(0xFF2E75B6); // blue — quiet notify
-      default:
-        return const Color(0xFF595959); // grey — class_1 / unknown
-    }
-  }
-
-  String _contextLabel(MonitoringEventModel event) {
-    if (event.contextResponse == 'confirmed') return 'Context confirmed';
-    if (event.contextResponse == 'dismissed') return 'Dismissed';
-    if (event.responseReceived) return 'Responded';
-    return 'No context yet';
-  }
-
-  String _timeAgo(DateTime when) {
-    final diff = DateTime.now().difference(when);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    return '${diff.inDays}d';
-  }
-}
+// _MonitoringEventCard removed — signals now displayed in SignalsScreen tab.
 
 // ---------------------------------------------------------------------------
 // Empty + error states
@@ -469,22 +378,24 @@ class _EmptyDashboard extends StatelessWidget {
         children: [
           Icon(
             Icons.auto_awesome_outlined,
-            color: Colors.grey[700],
+            color: const Color(0xFFC9A6FF).withValues(alpha: 0.4),
             size: 48,
           ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'Your patterns will appear here',
             style: TextStyle(
-              color: Colors.grey[500],
+              fontFamily: 'Rajdhani',
+              color: Color(0xFF8A92A8),
               fontSize: 15,
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          const Text(
             'after a few sessions',
             style: TextStyle(
-              color: Colors.grey[600],
+              fontFamily: 'Rajdhani',
+              color: Color(0xFF4A5168),
               fontSize: 13,
             ),
           ),
@@ -517,9 +428,10 @@ class _EmptyDashboard extends StatelessWidget {
                       logs.add('Starting health sync...');
                     }
                     return AlertDialog(
-                      backgroundColor: const Color(0xFF1A2533),
+                      backgroundColor: const Color(0xFF0C0C10),
                       title: const Text('Health Sync Log',
                           style: TextStyle(color: Colors.white, fontSize: 16)),
+
                       content: SizedBox(
                         width: double.maxFinite,
                         height: 300,
@@ -535,8 +447,8 @@ class _EmptyDashboard extends StatelessWidget {
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(ctx).pop(),
-                          child: const Text('Close',
-                              style: TextStyle(color: Color(0xFF2E75B6))),
+                         child: const Text('Close',
+                              style: TextStyle(color: Color(0xFFC9A6FF))),
                         ),
                       ],
                     );
@@ -547,7 +459,7 @@ class _EmptyDashboard extends StatelessWidget {
             icon: const Icon(Icons.monitor_heart, size: 18),
             label: const Text('Sync health data'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A2533),
+              backgroundColor: const Color(0xFF0C0C10),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
@@ -565,8 +477,9 @@ class _EmptyDashboard extends StatelessWidget {
             icon: const Icon(Icons.mic, size: 18),
             label: const Text('Start a session'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E75B6),
-              foregroundColor: Colors.white,
+              backgroundColor: const Color(0xFFC9A6FF),
+              foregroundColor: const Color(0xFF0A0010),
+              
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -631,25 +544,27 @@ class _UpcomingEventCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A2533),
+              color: const Color(0xFF0C0C10),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0x0FFFFFFF)),
             ),
             child: Row(
               children: [
-                Icon(Icons.event_outlined, color: Colors.grey[400], size: 20),
+                const Icon(Icons.event_outlined, color: Color(0xFF8A92A8), size: 20),
+                
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Next up',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                      const Text(
+                        'NEXT UP',
+                        style: TextStyle(fontFamily: 'SpaceMono', color: Color(0xFF4A5168), fontSize: 9, letterSpacing: 1.0),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        title + (timeStr.isNotEmpty ? ' at ' + timeStr : ''),
-                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                        title + (timeStr.isNotEmpty ? ' at $timeStr' : ''),
+                        style: const TextStyle(fontFamily: 'Rajdhani', color: Color(0xFFF0F2F8), fontSize: 14, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
@@ -712,11 +627,10 @@ class _ProfileCompletionCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A2533),
+              color: const Color(0xFF0C0C10),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFF2E75B6).withValues(alpha: 0.3),
-              ),
+                color: const Color(0xFFC9A6FF).withValues(alpha: 0.3),
             ),
             child: Row(
               children: [
@@ -803,7 +717,7 @@ class _ActiveGoalsCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A2533),
+              color: const Color(0xFF0A0A0F),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -875,12 +789,12 @@ class _ActiveGoalsCard extends StatelessWidget {
 
   Color _goalColor(String category) {
     switch (category) {
-      case 'performance': return const Color(0xFF2E75B6);
-      case 'recovery': return const Color(0xFF4CAF50);
-      case 'health': return const Color(0xFFE57373);
-      case 'skill': return const Color(0xFFD4A843);
-      case 'habit': return const Color(0xFFC9A6FF);
-      case 'lifestyle': return const Color(0xFF64B5F6);
+      case 'performance': return const Color(0xFFC9A6FF);
+      case 'recovery': return const Color(0xFFB79AF0);
+      case 'health': return const Color(0xFF9B7FE0);
+      case 'skill': return const Color(0xFFA78AE5);
+      case 'habit': return const Color(0xFFD4BFFF);
+      case 'lifestyle': return const Color(0xFF7C5FCF);
       default: return Colors.grey;
     }
   }
@@ -946,15 +860,16 @@ class _SessionCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A2533),
+          color: const Color(0xFF0C0C10),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0x0FFFFFFF)),
         ),
         child: Row(
           children: [
             Icon(
               _icon(session.sessionType),
-              color: Colors.grey[500],
-              size: 18,
+              color: const Color(0xFFC9A6FF),
+              size: 14,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -962,21 +877,14 @@ class _SessionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    session.typeLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    session.insightDelivered ?? 'No insight recorded',
+                    session.insightDelivered ?? session.typeLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 12,
+                    style: const TextStyle(
+                      fontFamily: 'Rajdhani',
+                      color: Color(0xFFF0F2F8),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],
@@ -984,10 +892,11 @@ class _SessionCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              session.dateLabel,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 11,
+              session.dateLabel.split(' at ').first,
+              style: const TextStyle(
+                fontFamily: 'SpaceMono',
+                color: Color(0xFF4A5168),
+                fontSize: 9,
               ),
             ),
           ],
@@ -1017,7 +926,7 @@ class _SessionCard extends StatelessWidget {
 void showEventDetail(BuildContext context, MonitoringEventModel event) {
   showModalBottomSheet(
     context: context,
-    backgroundColor: const Color(0xFF1A2533),
+    backgroundColor: const Color(0xFF0C0C10),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -1135,15 +1044,17 @@ class _SectionDropdown extends StatelessWidget {
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(top: 4),
         title: Text(
-          title,
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+          title.toUpperCase(),
+          style: const TextStyle(
+            fontFamily: 'SpaceMono',
+            color: Color(0xFF8A92A8),
+            fontSize: 10,
+            letterSpacing: 1.6,
+            fontWeight: FontWeight.w400,
           ),
         ),
-        iconColor: Colors.grey[500],
-        collapsedIconColor: Colors.grey[600],
+        iconColor: const Color(0xFF8A92A8),
+        collapsedIconColor: const Color(0xFF4A5168),
         initiallyExpanded: true,
         children: children,
       ),

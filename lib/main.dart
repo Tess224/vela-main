@@ -161,7 +161,10 @@ class _VelaAppState extends ConsumerState<VelaApp> {
     return MaterialApp.router(
       title: 'Vela',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF000000),
+        appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF000000)),
+      ),
       routerConfig: router,
     );
   }
@@ -179,7 +182,10 @@ class VelaBootstrapApp extends StatelessWidget {
     return MaterialApp(
       title: 'Vela',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF000000),
+        appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF000000)),
+      ),
       home: const SetupScreen(),
     );
   }
@@ -299,7 +305,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   enabledBorder: OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.white24)),
                   focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF8B5CF6))),
+                      borderSide: BorderSide(color: Color(0xFFC9A6FF))),
                 ),
               ),
               const SizedBox(height: 12),
@@ -313,7 +319,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   enabledBorder: OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.white24)),
                   focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF8B5CF6))),
+                      borderSide: BorderSide(color: Color(0xFFC9A6FF))),
                 ),
               ),
               const SizedBox(height: 16),
@@ -322,7 +328,8 @@ class _SetupScreenState extends State<SetupScreen> {
                 child: ElevatedButton(
                   onPressed: _loading ? null : _saveAndSync,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8B5CF6),
+                    backgroundColor: const Color(0xFFC9A6FF),
+                    foregroundColor: const Color(0xFF0A0010),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: _loading
