@@ -504,8 +504,9 @@ class _ErrorPlaceholder extends StatelessWidget {
       child: Center(
         child: Text(
           message,
-          style: TextStyle(
-            color: Colors.grey[500],
+          style: const TextStyle(
+            fontFamily: 'Rajdhani',
+            color: Color(0xFF8A92A8),
             fontSize: 14,
           ),
           textAlign: TextAlign.center,
@@ -634,10 +635,10 @@ class _ProfileCompletionCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.person_outline,
-                  color: Colors.grey[400],
-                  size: 22,
+                  color: Color(0xFFC9A6FF),
+                  size: 18,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -647,7 +648,8 @@ class _ProfileCompletionCard extends StatelessWidget {
                       const Text(
                         'Complete your health profile',
                         style: TextStyle(
-                          color: Colors.white,
+                          fontFamily: 'Rajdhani',
+                          color: Color(0xFFF0F2F8),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -655,18 +657,20 @@ class _ProfileCompletionCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         '$filled of 10 fields filled',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
+                        style: const TextStyle(
+                          fontFamily: 'SpaceMono',
+                          color: Color(0xFF8A92A8),
+                          fontSize: 10,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(
+                const Icon(
                   Icons.chevron_right,
-                  color: Colors.grey[600],
-                  size: 20,
+                  color: Color(0xFF4A5168),
+                  size: 16,
                 ),
               ],
             ),
@@ -941,7 +945,7 @@ void showEventDetail(BuildContext context, MonitoringEventModel event) {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[700],
+                color: const Color(0xFF4A5168),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -950,7 +954,8 @@ void showEventDetail(BuildContext context, MonitoringEventModel event) {
           Text(
             event.metricLabel,
             style: const TextStyle(
-              color: Colors.white,
+              fontFamily: 'Rajdhani',
+              color: Color(0xFFF0F2F8),
               fontSize: 20,
               fontWeight: FontWeight.w600,
             ),
@@ -989,13 +994,13 @@ class _DetailRow extends StatelessWidget {
           width: 130,
           child: Text(
             label,
-            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            style: const TextStyle(fontFamily: 'SpaceMono', color: Color(0xFF4A5168), fontSize: 10, letterSpacing: 0.4),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+            style: const TextStyle(fontFamily: 'Rajdhani', color: Color(0xFFF0F2F8), fontSize: 14),
           ),
         ),
       ],
