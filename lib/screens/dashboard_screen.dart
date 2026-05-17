@@ -33,6 +33,7 @@ class DashboardScreen extends ConsumerWidget {
     return RefreshIndicator(
       color: const Color(0xFFC9A6FF),
       backgroundColor: const Color(0xFF0C0C10),
+      notificationPredicate: (_) => true,
       onRefresh: () async {
         ref.invalidate(userProfileProvider);
         ref.invalidate(userMemoryProvider);
@@ -40,6 +41,8 @@ class DashboardScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          Container(height: 50, color: Colors.red, child: const Center(child: Text('DEBUG: Dashboard is rendering', style: TextStyle(color: Colors.white)))),
+          const SizedBox(height: 10),
           profileAsync.when(
             data: (profile) => _DashboardHeader(
               userName: profile?.firstName ?? 'there',

@@ -47,20 +47,22 @@ class _VelaShellState extends State<VelaShell> {
         bottom: false,
         child: _buildBody(),
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF000000),
-          border: Border(
-            top: BorderSide(color: Color(0x0FFFFFFF), width: 1),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            height: 1,
+            color: const Color(0x0FFFFFFF),
           ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: VelaBottomNav(
-            currentIndex: _currentIndex,
-            onTap: _onTabTap,
+          Container(
+            color: const Color(0xFF000000),
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+            child: VelaBottomNav(
+              currentIndex: _currentIndex,
+              onTap: _onTabTap,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
