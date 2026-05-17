@@ -1,5 +1,4 @@
-// lib/screens/dashboard_screen.dart — Dashboard content.
-// Used inside VelaShell (no Scaffold — the shell provides it).
+// lib/screens/dashboard_screen.dart — Dashboard tab content.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,24 +12,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/user_provider.dart';
 import '../core/health/health_data_manager.dart';
 
-// ---------------------------------------------------------------------------
-// Public entry — used by VelaShell
-// ---------------------------------------------------------------------------
-
-class DashboardContent extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   final String? highlightEventId;
   final String? recoveryEventId;
-  final WidgetRef ref;
 
-  const DashboardContent({
+  const DashboardScreen({
     super.key,
     this.highlightEventId,
     this.recoveryEventId,
-    required this.ref,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(userProfileProvider);
     final memoryAsync = ref.watch(userMemoryProvider);
 
@@ -79,33 +72,6 @@ class DashboardContent extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Also keep the old class name so router deep-links still compile.
-// This version wraps itself in a Scaffold (used when pushed directly, not as tab).
-class DashboardScreen extends ConsumerWidget {
-  final String? highlightEventId;
-  final String? recoveryEventId;
-
-  const DashboardScreen({
-    super.key,
-    this.highlightEventId,
-    this.recoveryEventId,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: SafeArea(
-        child: DashboardContent(
-          highlightEventId: highlightEventId,
-          recoveryEventId: recoveryEventId,
-          ref: ref,
-        ),
       ),
     );
   }
@@ -574,7 +540,7 @@ class _SessionCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Shared widgets
+// Shared
 // ---------------------------------------------------------------------------
 
 class _SectionDropdown extends StatelessWidget {
@@ -600,7 +566,7 @@ class _SectionDropdown extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Event detail bottom sheet (used by signals + notifications screens too)
+// Event detail bottom sheet (public — used by signals + notifications)
 // ---------------------------------------------------------------------------
 
 void showEventDetail(BuildContext context, MonitoringEventModel event) {

@@ -1,7 +1,6 @@
 // lib/screens/vela_shell.dart — Main shell with bottom nav.
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../widgets/vela_bottom_nav.dart';
@@ -9,7 +8,7 @@ import 'dashboard_screen.dart';
 import 'signals_screen.dart';
 import 'profile_screen_v2.dart';
 
-class VelaShell extends ConsumerStatefulWidget {
+class VelaShell extends StatefulWidget {
   final String? highlightEventId;
   final String? recoveryEventId;
 
@@ -20,10 +19,10 @@ class VelaShell extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<VelaShell> createState() => _VelaShellState();
+  State<VelaShell> createState() => _VelaShellState();
 }
 
-class _VelaShellState extends ConsumerState<VelaShell> {
+class _VelaShellState extends State<VelaShell> {
   int _currentIndex = 0;
 
   void _onTabTap(int index) {
@@ -73,33 +72,10 @@ class _VelaShellState extends ConsumerState<VelaShell> {
       case 4:
         return const ProfileScreenV2();
       default:
-        return _DashboardTab(
+        return DashboardScreen(
           highlightEventId: widget.highlightEventId,
           recoveryEventId: widget.recoveryEventId,
-          ref: ref,
         );
     }
-  }
-}
-
-/// Dashboard as a plain widget (not a Scaffold) so it works inside VelaShell's Scaffold.
-class _DashboardTab extends StatelessWidget {
-  final String? highlightEventId;
-  final String? recoveryEventId;
-  final WidgetRef ref;
-
-  const _DashboardTab({
-    this.highlightEventId,
-    this.recoveryEventId,
-    required this.ref,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return DashboardContent(
-      highlightEventId: highlightEventId,
-      recoveryEventId: recoveryEventId,
-      ref: ref,
-    );
   }
 }
