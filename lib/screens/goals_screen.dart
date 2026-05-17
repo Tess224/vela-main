@@ -130,7 +130,6 @@ class _GoalCard extends StatelessWidget {
             border: Border.all(color: goal.isActive
                 ? _categoryColor(goal.category).withValues(alpha: 0.3)
                 : const Color(0x0FFFFFFF)),
-                : null,
           ),
           child: Row(
             children: [
