@@ -24,8 +24,11 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    debugPrint('DashboardScreen.build called');
     final profileAsync = ref.watch(userProfileProvider);
     final memoryAsync = ref.watch(userMemoryProvider);
+    debugPrint('profileAsync state: ${profileAsync.runtimeType}');
+    debugPrint('memoryAsync state: ${memoryAsync.runtimeType}');
 
     return RefreshIndicator(
       color: const Color(0xFFC9A6FF),
@@ -57,17 +60,23 @@ class DashboardScreen extends ConsumerWidget {
           const _UpcomingEventCard(),
           const SizedBox(height: 16),
           memoryAsync.when(
-            data: (memory) => _DashboardBody(
+            data: (memory) {
+              debugPrint('memoryAsync DATA: hasPattern=${memory.hasActivePattern}, hasOvernight=${memory.hasOvernightSummary}');
+              return _DashboardBody(
               memory: memory,
               highlightEventId: highlightEventId,
             ),
-            loading: () => const Padding(
+            loading: () {
+              debugPrint('memoryAsync LOADING');
+              return const Padding(
               padding: EdgeInsets.symmetric(vertical: 60),
               child: Center(
                 child: CircularProgressIndicator(color: Color(0xFFC9A6FF)),
               ),
             ),
-            error: (error, _) => const _ErrorPlaceholder(
+            error: (error, _) {
+              debugPrint('memoryAsync ERROR: $error');
+              return const _ErrorPlaceholder(
               message: 'Could not load your data. Pull to refresh.',
             ),
           ),
