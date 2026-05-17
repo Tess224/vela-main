@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/monitoring_event_model.dart';
-import 'dashboard_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -151,7 +150,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ),
                           ),
                         ),
-                        ...today.map((e) => _NotifRow(event: e, onTap: () => showEventDetail(context, e))),
+                        ...today.map((e) => _NotifRow(event: e, onTap: () => _showEventDetail(context, e))),
                       ],
                       if (earlier.isNotEmpty) ...[
                         const Padding(
@@ -166,7 +165,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ),
                           ),
                         ),
-                        ...earlier.map((e) => _NotifRow(event: e, onTap: () => showEventDetail(context, e))),
+                        ...earlier.map((e) => _NotifRow(event: e, onTap: () => _showEventDetail(context, e))),
                       ],
                       const SizedBox(height: 24),
                     ],
@@ -174,6 +173,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 },
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEventDetail(BuildContext context, MonitoringEventModel event) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0C0C10),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A5168),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              event.metricLabel,
+              style: const TextStyle(
+                fontFamily: 'Rajdhani',
+                color: Color(0xFFF0F2F8),
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),

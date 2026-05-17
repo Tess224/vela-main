@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/monitoring_event_model.dart';
-import '../services/supabase_service.dart';
-import 'dashboard_screen.dart';
 
 class SignalsScreen extends StatefulWidget {
   const SignalsScreen({super.key});
@@ -147,7 +145,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
                         ),
                         ...today.map((e) => Padding(
                           padding: const EdgeInsets.only(bottom: 8),
-                          child: _SignalCard(event: e, onTap: () => showEventDetail(context, e)),
+                          child: _SignalCard(event: e, onTap: () => _showEventDetail(context, e)),
                         )),
                       ],
                       if (earlier.isNotEmpty) ...[
@@ -165,7 +163,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
                         ),
                         ...earlier.map((e) => Padding(
                           padding: const EdgeInsets.only(bottom: 8),
-                          child: _SignalCard(event: e, onTap: () => showEventDetail(context, e)),
+                          child: _SignalCard(event: e, onTap: () => _showEventDetail(context, e)),
                         )),
                       ],
                       const SizedBox(height: 24),
@@ -181,6 +179,69 @@ class _SignalsScreenState extends State<SignalsScreen> {
   }
 
   void _setFilter(String id) => setState(() => _filter = id);
+
+  void _showEventDetail(BuildContext context, MonitoringEventModel event) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0C0C10),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A5168),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              event.metricLabel,
+              style: const TextStyle(
+                fontFamily: 'Rajdhani',
+                color: Color(0xFFF0F2F8),
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _detailRow('Deviation', event.deviationScore.toStringAsFixed(1)),
+            const SizedBox(height: 10),
+            _detailRow('Detected', _timeAgo(event.detectedAt)),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(label, style: const TextStyle(fontFamily: 'SpaceMono', color: Color(0xFF4A5168), fontSize: 10)),
+        ),
+        Text(value, style: const TextStyle(fontFamily: 'Rajdhani', color: Color(0xFFF0F2F8), fontSize: 14)),
+      ],
+    );
+  }
+
+  String _timeAgo(DateTime when) {
+    final diff = DateTime.now().difference(when);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
 
   Future<List<MonitoringEventModel>> _fetchEvents() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
