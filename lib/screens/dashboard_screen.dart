@@ -80,7 +80,8 @@ class DashboardScreen extends ConsumerWidget {
               debugPrint('memoryAsync ERROR: $error');
               return const _ErrorPlaceholder(
                 message: 'Could not load your data. Pull to refresh.',
-            ),
+              );
+            },
           ),
         ],
       ),
