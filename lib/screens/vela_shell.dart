@@ -68,16 +68,12 @@ class _VelaShellState extends State<VelaShell> {
   }
 
   Widget _buildBody() {
-    debugPrint('VelaShell._buildBody called, index=$_currentIndex');
     switch (_currentIndex) {
       case 1:
-        debugPrint('VelaShell: showing SignalsScreen');
         return const SignalsScreen();
       case 4:
-        debugPrint('VelaShell: showing ProfileScreenV2');
         return const ProfileScreenV2();
       default:
-        debugPrint('VelaShell: showing DashboardScreen');
         return DashboardScreen(
           highlightEventId: widget.highlightEventId,
           recoveryEventId: widget.recoveryEventId,

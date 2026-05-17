@@ -71,8 +71,8 @@ class GoalsScreen extends ConsumerWidget {
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Add a goal'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E75B6),
-                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xFFC9A6FF),
+                      foregroundColor: const Color(0xFF0A0010),
                     ),
                   ),
                 ],
@@ -125,10 +125,11 @@ class _GoalCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A2533),
+            color: const Color(0xFF0C0C10),
             borderRadius: BorderRadius.circular(12),
-            border: goal.isActive
-                ? Border.all(color: _categoryColor(goal.category).withValues(alpha: 0.3))
+            border: Border.all(color: goal.isActive
+                ? _categoryColor(goal.category).withValues(alpha: 0.3)
+                : const Color(0x0FFFFFFF)),
                 : null,
           ),
           child: Row(
@@ -184,16 +185,16 @@ class _GoalCard extends StatelessWidget {
   void _showStatusMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A2533),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (goal.isActive) ...[
+      backgroundColor: const Color(0xFF0C0C10),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (_) => Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (goal.isActive) ...[
               _ActionTile(icon: Icons.pause, label: 'Pause goal', onTap: () {
                 _updateStatus(context, 'paused');
               }),
@@ -232,17 +233,17 @@ class _GoalCard extends StatelessWidget {
   Color _categoryColor(String category) {
     switch (category) {
       case 'performance':
-        return const Color(0xFF2E75B6);
-      case 'recovery':
-        return const Color(0xFF4CAF50);
-      case 'health':
-        return const Color(0xFFE57373);
-      case 'skill':
-        return const Color(0xFFD4A843);
-      case 'habit':
         return const Color(0xFFC9A6FF);
+      case 'recovery':
+        return const Color(0xFFB79AF0);
+      case 'health':
+        return const Color(0xFF9B7FE0);
+      case 'skill':
+        return const Color(0xFFA78AE5);
+      case 'habit':
+        return const Color(0xFFD4BFFF);
       case 'lifestyle':
-        return const Color(0xFF64B5F6);
+        return const Color(0xFF7C5FCF);
       default:
         return Colors.grey;
     }

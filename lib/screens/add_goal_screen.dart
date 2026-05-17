@@ -153,8 +153,9 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E75B6),
-                  foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xFFC9A6FF),
+                    foregroundColor: const Color(0xFF0A0010),
+                
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _saving

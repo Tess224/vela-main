@@ -24,11 +24,8 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    debugPrint('DashboardScreen.build called');
     final profileAsync = ref.watch(userProfileProvider);
     final memoryAsync = ref.watch(userMemoryProvider);
-    debugPrint('profileAsync state: ${profileAsync.runtimeType}');
-    debugPrint('memoryAsync state: ${memoryAsync.runtimeType}');
 
     return RefreshIndicator(
       color: const Color(0xFFC9A6FF),
@@ -41,8 +38,6 @@ class DashboardScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Container(height: 50, color: Colors.red, child: const Center(child: Text('DEBUG: Dashboard is rendering', style: TextStyle(color: Colors.white)))),
-          const SizedBox(height: 10),
           profileAsync.when(
             data: (profile) => _DashboardHeader(
               userName: profile?.firstName ?? 'there',
@@ -64,14 +59,13 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           memoryAsync.when(
             data: (memory) {
-              debugPrint('memoryAsync DATA: hasPattern=${memory.hasActivePattern}, hasOvernight=${memory.hasOvernightSummary}');
               return _DashboardBody(
                 memory: memory,
                 highlightEventId: highlightEventId,
               );
             },
             loading: () {
-              debugPrint('memoryAsync LOADING');
+              
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 60),
                 child: Center(
@@ -80,7 +74,7 @@ class DashboardScreen extends ConsumerWidget {
               );
             },
             error: (error, _) {
-              debugPrint('memoryAsync ERROR: $error');
+              
               return const _ErrorPlaceholder(
                 message: 'Could not load your data. Pull to refresh.',
               );
@@ -222,12 +216,10 @@ class _DashboardBody extends StatelessWidget {
       children.add(const SizedBox(height: 16));
     }
 
+    // Always show biometric card if baselines exist
+    children.add(const _BiometricCard());
     children.add(const SizedBox(height: 16));
     children.add(const _RecentSessionsList());
-
-    if (children.length <= 2) {
-      return const _EmptyDashboard();
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,6 +285,110 @@ class _RecoverySummaryCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Empty + error
 // ---------------------------------------------------------------------------
+
+class _BiometricCard extends StatelessWidget {
+  const _BiometricCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, double?>>(
+      future: _fetchBaselines(),
+      builder: (context, snapshot) {
+        final data = snapshot.data ?? {};
+        if (data.isEmpty) return const SizedBox.shrink();
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0C0C10),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0x2E9B7FE0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('BASELINES', style: TextStyle(fontFamily: 'SpaceMono', fontSize: 8, letterSpacing: 1.5, color: Color(0xFFC9A6FF))),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _MetricTile(label: 'HR', value: data['resting_hr'], unit: 'bpm', color: const Color(0xFFC9A6FF)),
+                  const SizedBox(width: 1),
+                  _MetricTile(label: 'HRV', value: data['hrv'], unit: 'ms', color: const Color(0xFF9B7FE0)),
+                  const SizedBox(width: 1),
+                  _MetricTile(label: 'SpO\u2082', value: data['spo2'], unit: '%', color: const Color(0xFFB79AF0)),
+                  const SizedBox(width: 1),
+                  _MetricTile(label: 'Steps', value: data['active_energy'], unit: '', color: const Color(0xFFD4BFFF)),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<Map<String, double?>> _fetchBaselines() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return {};
+    try {
+      final rows = await Supabase.instance.client
+          .from('user_baselines')
+          .select('metric_type, personal_mean')
+          .eq('user_id', userId);
+      final map = <String, double?>{};
+      for (final r in rows) {
+        map[r['metric_type'] as String] = (r['personal_mean'] as num?)?.toDouble();
+      }
+      return map;
+    } catch (_) {
+      return {};
+    }
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  final String label;
+  final double? value;
+  final String unit;
+  final Color color;
+  const _MetricTile({required this.label, required this.value, required this.unit, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0C0C10),
+          border: Border.all(color: const Color(0x0FFFFFFF)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontFamily: 'SpaceMono', fontSize: 8, letterSpacing: 1.0, color: Color(0xFF4A5168))),
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  value != null ? value!.toStringAsFixed(0) : '--',
+                  style: TextStyle(fontFamily: 'Orbitron', fontSize: 16, fontWeight: FontWeight.w700, color: value != null ? color : const Color(0xFF4A5168)),
+                ),
+                if (unit.isNotEmpty) ...[
+                  const SizedBox(width: 2),
+                  Text(unit, style: const TextStyle(fontFamily: 'SpaceMono', fontSize: 9, color: Color(0xFF4A5168))),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _EmptyDashboard extends StatelessWidget {
   const _EmptyDashboard();
