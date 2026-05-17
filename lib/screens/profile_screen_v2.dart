@@ -11,10 +11,7 @@ class ProfileScreenV2 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: SafeArea(
-        child: FutureBuilder<Map<String, dynamic>?>(
+    return FutureBuilder<Map<String, dynamic>?>(
           future: _fetchProfile(),
           builder: (context, snapshot) {
             final data = snapshot.data;
@@ -226,8 +223,6 @@ class ProfileScreenV2 extends StatelessWidget {
               ],
             );
           },
-        ),
-      ),
     );
   }
 

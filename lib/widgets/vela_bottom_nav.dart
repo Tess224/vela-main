@@ -15,14 +15,8 @@ class VelaBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xEB000000),
-        border: Border(
-          top: BorderSide(color: Color(0x0FFFFFFF), width: 1),
-        ),
-      ),
-      padding: EdgeInsets.only(top: 10, bottom: MediaQuery.of(context).padding.bottom + 8, left: 12, right: 12),
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 8, left: 12, right: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [

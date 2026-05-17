@@ -18,10 +18,7 @@ class _SignalsScreenState extends State<SignalsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: SafeArea(
-        child: Column(
+    return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
@@ -173,8 +170,6 @@ class _SignalsScreenState extends State<SignalsScreen> {
               ),
             ),
           ],
-        ),
-      ),
     );
   }
 
