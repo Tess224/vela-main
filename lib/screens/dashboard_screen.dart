@@ -63,21 +63,23 @@ class DashboardScreen extends ConsumerWidget {
             data: (memory) {
               debugPrint('memoryAsync DATA: hasPattern=${memory.hasActivePattern}, hasOvernight=${memory.hasOvernightSummary}');
               return _DashboardBody(
-              memory: memory,
-              highlightEventId: highlightEventId,
-            ),
+                memory: memory,
+                highlightEventId: highlightEventId,
+              );
+            },
             loading: () {
               debugPrint('memoryAsync LOADING');
               return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 60),
-              child: Center(
-                child: CircularProgressIndicator(color: Color(0xFFC9A6FF)),
-              ),
-            ),
+                padding: EdgeInsets.symmetric(vertical: 60),
+                child: Center(
+                  child: CircularProgressIndicator(color: Color(0xFFC9A6FF)),
+                ),
+              );
+            },
             error: (error, _) {
               debugPrint('memoryAsync ERROR: $error');
               return const _ErrorPlaceholder(
-              message: 'Could not load your data. Pull to refresh.',
+                message: 'Could not load your data. Pull to refresh.',
             ),
           ),
         ],
