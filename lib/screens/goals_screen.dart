@@ -40,7 +40,7 @@ class GoalsScreen extends ConsumerWidget {
       ),
       body: goalsAsync.when(
         loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF2E75B6)),
+          child: CircularProgressIndicator(color: Color(0xFFC9A6FF)),
         ),
         error: (e, _) => Center(
           child: Text('Failed to load goals', style: TextStyle(color: Colors.grey[500])),

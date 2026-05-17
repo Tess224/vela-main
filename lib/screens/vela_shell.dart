@@ -26,31 +26,16 @@ class VelaShell extends StatefulWidget {
 class _VelaShellState extends State<VelaShell> {
   int _currentIndex = 0;
 
-  late final List<Widget> _screens;
-
-  @override
-  void initState() {
-    super.initState();
-    _screens = [
-      DashboardScreen(
-        highlightEventId: widget.highlightEventId,
-        recoveryEventId: widget.recoveryEventId,
-      ),
-      const SignalsScreen(),
-      const SizedBox.shrink(), // placeholder — session opens via push
-      const _GoalsPlaceholder(),
-      const ProfileScreenV2(),
-    ];
-  }
-
   void _onTabTap(int index) {
     if (index == 2) {
+      // Session — push as overlay, don't switch tab
       final hour = DateTime.now().hour;
       final sessionType = hour < 14 ? 'morning' : 'evening';
       context.push('/session', extra: {'sessionType': sessionType});
       return;
     }
     if (index == 3) {
+      // Goals — push the existing goals screen
       context.push('/goals');
       return;
     }
@@ -61,29 +46,30 @@ class _VelaShellState extends State<VelaShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: _buildBody(),
       bottomNavigationBar: VelaBottomNav(
         currentIndex: _currentIndex,
         onTap: _onTabTap,
       ),
     );
   }
-}
 
-// Goals already has its own screen via router — this is just a fallback
-class _GoalsPlaceholder extends StatelessWidget {
-  const _GoalsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF000000),
-      body: Center(
-        child: CircularProgressIndicator(color: Color(0xFFC9A6FF)),
-      ),
-    );
+  Widget _buildBody() {
+    switch (_currentIndex) {
+      case 0:
+        return DashboardScreen(
+          highlightEventId: widget.highlightEventId,
+          recoveryEventId: widget.recoveryEventId,
+        );
+      case 1:
+        return const SignalsScreen();
+      case 4:
+        return const ProfileScreenV2();
+      default:
+        return DashboardScreen(
+          highlightEventId: widget.highlightEventId,
+          recoveryEventId: widget.recoveryEventId,
+        );
+    }
   }
 }

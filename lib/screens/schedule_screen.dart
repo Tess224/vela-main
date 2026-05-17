@@ -94,11 +94,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Color _stressColor(String? risk) {
     switch (risk) {
       case 'high':
-        return const Color(0xFFE57373);
+        return const Color(0xFFC9A6FF);
       case 'medium':
-        return const Color(0xFFD4A843);
+        return const Color(0xFF9B7FE0);
       default:
-        return const Color(0xFF4CAF50);
+        return const Color(0xFF6B4FB0);
     }
   }
 
@@ -129,7 +129,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ),
       body: _loading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF2E75B6)),
+              child: CircularProgressIndicator(color: Color(0xFFC9A6FF)),
             )
           : _events.isEmpty
               ? Center(

@@ -22,7 +22,7 @@ class VelaBottomNav extends StatelessWidget {
           top: BorderSide(color: Color(0x0FFFFFFF), width: 1),
         ),
       ),
-      padding: const EdgeInsets.only(top: 10, bottom: 14, left: 12, right: 12),
+      padding: EdgeInsets.only(top: 10, bottom: MediaQuery.of(context).padding.bottom + 8, left: 12, right: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [

@@ -39,8 +39,8 @@ class SessionDetailScreen extends StatelessWidget {
                 children: [
                   Icon(
                     _sessionIcon(session.sessionType),
-                    color: Colors.grey[400],
-                    size: 20,
+                    color: const Color(0xFFC9A6FF),
+                    size: 16,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -65,12 +65,14 @@ class SessionDetailScreen extends StatelessWidget {
             const SizedBox(height: 16),
             if (session.insightDelivered != null &&
                 session.insightDelivered!.isNotEmpty) ...[
-              Text(
-                'Insight',
+              const Text(
+                'INSIGHT',
                 style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+                  fontFamily: 'SpaceMono',
+                  color: Color(0xFFC9A6FF),
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
               const SizedBox(height: 8),
@@ -95,12 +97,14 @@ class SessionDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
             ],
-            Text(
-              'Transcript',
+            const Text(
+              'TRANSCRIPT',
               style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontFamily: 'SpaceMono',
+                color: Color(0xFF8A92A8),
+                fontSize: 10,
+                letterSpacing: 1.5,
+                fontWeight: FontWeight.w400,
               ),
             ),
             const SizedBox(height: 8),

@@ -38,9 +38,9 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
               onToggleTextMode: () {
                 ref.read(sessionNotifierProvider.notifier).toggleTextMode();
               },
-              onEndSession: () {
-                ref.read(sessionNotifierProvider.notifier).endSession();
-                if (context.mounted) Navigator.of(context).pop();
+              onEndSession: () async {
+                await ref.read(sessionNotifierProvider.notifier).endSession();
+                if (context.mounted) context.pop();
               },
             ),
             Expanded(
