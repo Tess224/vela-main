@@ -93,8 +93,13 @@ class NotificationService {
     final body = message.notification?.body ?? data['body'] ?? '';
     final type = data['type'] as String?;
 
+    debugPrint('showWithActions called: type=$type, title=$title, body=${body.substring(0, body.length > 50 ? 50 : body.length)}');
+    debugPrint('showWithActions data keys: ${data.keys.toList()}');
+    debugPrint('showWithActions actions raw: ${data['actions']}');
+
     // Parse actions from the data payload
     final actions = _parseActions(data['actions'] as String?);
+    debugPrint('showWithActions parsed ${actions.length} actions: $actions');
 
     // Build Android action buttons
     final androidActions = actions.map((label) {
@@ -120,10 +125,12 @@ class NotificationService {
     // so action handlers can read event_id, checkin_id, etc.
     final payloadJson = jsonEncode(data);
 
-    // Use a unique ID based on event_id or timestamp
-    final notifId = (data['event_id'] ?? data['checkin_id'] ?? '')
+    // Use a unique ID based on event_id, checkin_id, or nudge_id
+    final notifId = (data['event_id'] ?? data['checkin_id'] ?? data['nudge_id'] ?? DateTime.now().millisecondsSinceEpoch.toString())
         .hashCode
         .abs() % 100000;
+    
+    debugPrint('showWithActions: type=$type, title=$title, actions=${actions.length}, notifId=$notifId');
 
     await _localPlugin.show(
       notifId,
@@ -232,5 +239,12 @@ class NotificationService {
 
   static Future<void> handleBackgroundMessage(RemoteMessage message) async {
     debugPrint('FCM background: ${message.data['type']}');
+    
+    // Data-only messages need to be shown as local notifications in background
+    final type = message.data['type'] as String?;
+    if (type == 'ambient_nudge' || type == 'ambient_checkin' || type == 'context_confirm') {
+      debugPrint('FCM background: showing local notification for $type');
+      await NotificationService.instance.showWithActions(message);
+    }
   }
 }

@@ -97,20 +97,27 @@ Future<void> initializeNotificationListeners(
 
   // 3. Foreground state — notification arrived while app is open
   service.onMessage.listen((message) {
-    debugPrint('FCM: foreground message');
+    debugPrint('FCM: foreground message received');
+    debugPrint('FCM: data keys: ${message.data.keys.toList()}');
+    debugPrint('FCM: type=${message.data['type']}, notification=${message.notification?.title}');
     ref.read(latestNotificationProvider.notifier).state = message;
 
     final type = message.data['type'] as String?;
+    debugPrint('FCM: routing type=$type');
 
     if (type == 'context_confirm') {
-      // Always show via local plugin with action buttons
       service.showWithActions(message);
     } else if (type == 'in_moment') {
       notificationRouter.handleNotificationTap(message);
     } else if (type == 'ambient_checkin') {
       _showCheckinDialog(router, message);
     } else if (type == 'ambient_nudge') {
+      debugPrint('FCM: showing nudge — foreground dialog + local notification');
       _showNudgeDialog(router, message);
+      // Also show as local notification in case dialog doesn't appear
+      service.showWithActions(message);
+    } else {
+      debugPrint('FCM: unhandled type=$type');
     }
   });
 }
