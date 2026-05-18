@@ -75,6 +75,9 @@ class NotificationService {
         onActionTap!(eventId, actionId);
       } else if (checkinId != null) {
         _writeCheckinResponse(checkinId, actionId);
+      } else if (data.containsKey('nudge_id')) {
+        final nudgeId = data['nudge_id'] as String;
+        _writeNudgeResponse(nudgeId, actionId);
       }
     } catch (e) {
       debugPrint('Action tap parse error: $e');
@@ -155,6 +158,19 @@ class NotificationService {
           .toList();
     } catch (_) {
       return [];
+    }
+  }
+
+  /// Write a nudge response directly (for ambient nudge actions)
+  Future<void> _writeNudgeResponse(String nudgeId, String response) async {
+    try {
+      await Supabase.instance.client.from('scheduled_nudges').update({
+        'response_value': response,
+        'responded_at': DateTime.now().toIso8601String(),
+      }).eq('nudge_id', nudgeId);
+      debugPrint('Nudge action response written: $response');
+    } catch (e) {
+      debugPrint('Nudge action write failed: $e');
     }
   }
 

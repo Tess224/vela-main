@@ -52,6 +52,9 @@ class NotificationRouter {
       case 'ambient_checkin':
         router.go('/dashboard');
         break;
+      case 'ambient_nudge':
+        router.go('/dashboard');
+        break;
       default:
         router.go('/dashboard');
     }
@@ -106,6 +109,8 @@ Future<void> initializeNotificationListeners(
       notificationRouter.handleNotificationTap(message);
     } else if (type == 'ambient_checkin') {
       _showCheckinDialog(router, message);
+    } else if (type == 'ambient_nudge') {
+      _showNudgeDialog(router, message);
     }
   });
 }
@@ -126,6 +131,77 @@ Future<void> _writeEventResponse(String eventId, String actionId) async {
 // ---------------------------------------------------------------------------
 // Ambient check-in dialog (unchanged)
 // ---------------------------------------------------------------------------
+
+void _showNudgeDialog(
+  GoRouter router,
+  RemoteMessage message,
+) {
+  final data = message.data;
+  final nudgeId = data['nudge_id'] as String?;
+  final title = data['title'] as String? ?? message.notification?.title ?? 'Vela';
+  final body = data['body'] as String? ?? message.notification?.body ?? '';
+
+  List<String> options = [];
+  try {
+    final optionsJson = data['response_options'] as String?;
+    if (optionsJson != null) {
+      final decoded = jsonDecode(optionsJson);
+      if (decoded is List) {
+        options = decoded.map((e) => e.toString()).toList();
+      }
+    }
+  } catch (_) {}
+
+  if (nudgeId == null || options.isEmpty) return;
+
+  final context = router.routerDelegate.navigatorKey.currentContext;
+  if (context == null) return;
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: Text(body),
+      actions: options.map((option) {
+        return TextButton(
+          onPressed: () {
+            Navigator.of(ctx).pop();
+            _writeNudgeResponse(nudgeId, option);
+          },
+          child: Text(option),
+        );
+      }).toList(),
+    ),
+  );
+}
+
+Future<void> _writeNudgeResponse(String nudgeId, String response) async {
+  try {
+    final pipelineUrl = Env.sessionPipelineUrl;
+    await http.post(
+      Uri.parse('$pipelineUrl/nudge/respond'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'nudge_id': nudgeId,
+        'response_value': response,
+      }),
+    );
+    debugPrint('Nudge response sent: $response for $nudgeId');
+  } catch (e) {
+    debugPrint('Nudge response failed: $e');
+    // Fallback: write directly to DB
+    try {
+      await Supabase.instance.client.from('scheduled_nudges').update({
+        'response_value': response,
+        'responded_at': DateTime.now().toIso8601String(),
+      }).eq('nudge_id', nudgeId);
+      debugPrint('Nudge response written directly to DB');
+    } catch (e2) {
+      debugPrint('Nudge direct write also failed: $e2');
+    }
+  }
+}
 
 void _showCheckinDialog(
   GoRouter router,
