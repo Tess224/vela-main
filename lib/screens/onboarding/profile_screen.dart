@@ -107,7 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         frequency: const Duration(minutes: 15),
         inputData: {'user_id': userId},
         constraints: Constraints(networkType: NetworkType.connected),
-        existingWorkPolicy: ExistingWorkPolicy.replace,
+        existingPeriodicWorkPolicy: ExistingPeriodicWorkPolicy.replace,
       );
 
       if (mounted) context.go('/onboarding/ready');
