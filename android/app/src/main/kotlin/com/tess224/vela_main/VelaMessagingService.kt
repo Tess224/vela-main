@@ -26,8 +26,8 @@ class VelaMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "has notification field: ${message.notification != null}")
         Log.d(TAG, "actions field: ${data["actions"]}")
 
-        if (type == "context_confirm") {
-            Log.d(TAG, "Routing to showWithActions")
+        if (type == "context_confirm" || type == "ambient_nudge") {
+            Log.d(TAG, "Routing to showWithActions for type=$type")
             showWithActions(data)
         } else {
             Log.d(TAG, "Passing to super (Flutter handler)")
@@ -45,7 +45,7 @@ class VelaMessagingService : FirebaseMessagingService() {
         val channelId = "vela_alerts"
         val title = data["title"] ?: "Vela"
         val body = data["body"] ?: ""
-        val eventId = data["event_id"] ?: ""
+        val eventId = data["event_id"] ?: data["nudge_id"] ?: ""
 
         Log.d(TAG, "showWithActions — title=$title body=$body eventId=$eventId")
 
@@ -97,9 +97,12 @@ class VelaMessagingService : FirebaseMessagingService() {
                     actionIntent.action = "com.tess224.vela_main.NOTIFICATION_ACTION"
                     actionIntent.putExtra("action_id", label)
                     actionIntent.putExtra("event_id", eventId)
+                    actionIntent.putExtra("nudge_id", data["nudge_id"] ?: "")
+                    actionIntent.putExtra("type", type)
 
+                    val uniqueKey = (eventId.ifEmpty { data["nudge_id"] ?: "" }) + label
                     val actionPending = PendingIntent.getBroadcast(
-                        context, (eventId + label).hashCode(), actionIntent,
+                        context, uniqueKey.hashCode(), actionIntent,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
 
