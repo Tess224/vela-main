@@ -59,7 +59,7 @@ Future<void> main() async {
   final hasCredentials = url != null && anonKey != null;
 
   // Workmanager init runs in both paths
-  await Workmanager().initialize(callbackDispatcher);
+  await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
 
   if (hasCredentials) {
     // Full app boot — Firebase + Supabase + Riverpod + Router

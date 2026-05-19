@@ -13,7 +13,7 @@ class HealthDataManager {
 
   HealthDataManager() {
     _tierDetector = SignalTierDetector(_health);
-    _health.configure();
+    _health.configure(useHealthConnectIfAvailable: true);
   }
 
   static const List<HealthDataType> _fullTypes = [
