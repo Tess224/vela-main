@@ -98,7 +98,7 @@ class VelaMessagingService : FirebaseMessagingService() {
                     actionIntent.putExtra("action_id", label)
                     actionIntent.putExtra("event_id", eventId)
                     actionIntent.putExtra("nudge_id", data["nudge_id"] ?: "")
-                    actionIntent.putExtra("type", type)
+                    actionIntent.putExtra("type", data["type"] ?: "")
 
                     val uniqueKey = (eventId.ifEmpty { data["nudge_id"] ?: "" }) + label
                     val actionPending = PendingIntent.getBroadcast(
