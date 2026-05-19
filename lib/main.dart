@@ -261,7 +261,7 @@ class _SetupScreenState extends State<SetupScreen> {
         frequency: const Duration(minutes: 15),
         inputData: {'user_id': testUserId},
         constraints: Constraints(networkType: NetworkType.connected),
-        existingPeriodicWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+        existingWorkPolicy: ExistingWorkPolicy.replace,
       );
 
       _log('🔄 Background sync registered — every 15 minutes.');
