@@ -111,10 +111,10 @@
 
         <meta-data
             android:name="com.tess224.vela.MONITORING_URL"
-            android:value="YOUR_MONITORING_ENGINE_URL" />
+            android:value="https://vela-backend2-production-9b0e.up.railway.app" />
         <meta-data
             android:name="com.tess224.vela.SESSION_PIPELINE_URL"
-            android:value="YOUR_SESSION_PIPELINE_URL" />
+            android:value="https://vela-backend2-production-afe7.up.railway.app" />
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
