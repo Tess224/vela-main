@@ -26,7 +26,7 @@ class VelaMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "has notification field: ${message.notification != null}")
         Log.d(TAG, "actions field: ${data["actions"]}")
 
-        if (type == "context_confirm" || type == "ambient_nudge") {
+        if (type == "context_confirm" || type == "ambient_nudge" || type == "ambient_checkin") {
             Log.d(TAG, "Routing to showWithActions for type=$type")
             showWithActions(data)
         } else {
