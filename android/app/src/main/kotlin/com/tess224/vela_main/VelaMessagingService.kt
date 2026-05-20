@@ -96,8 +96,9 @@ class VelaMessagingService : FirebaseMessagingService() {
                     val actionIntent = Intent(context, NotificationActionReceiver::class.java)
                     actionIntent.action = "com.tess224.vela_main.NOTIFICATION_ACTION"
                     actionIntent.putExtra("action_id", label)
-                    actionIntent.putExtra("event_id", eventId)
+                    actionIntent.putExtra("event_id", data["event_id"] ?: "")
                     actionIntent.putExtra("nudge_id", data["nudge_id"] ?: "")
+                    actionIntent.putExtra("checkin_id", data["checkin_id"] ?: "")
                     actionIntent.putExtra("type", data["type"] ?: "")
 
                     val uniqueKey = (eventId.ifEmpty { data["nudge_id"] ?: "" }) + label
