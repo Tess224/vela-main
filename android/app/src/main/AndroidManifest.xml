@@ -40,6 +40,14 @@
         </intent>
     </queries>
 
+    <queries>
+        <package android:name="app.phantom" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
         android:label="vela_main"
         android:name="${applicationName}"
