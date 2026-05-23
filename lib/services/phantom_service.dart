@@ -23,7 +23,7 @@ class PhantomService {
   static const int cashDecimals = 6;
 
   // TODO: Replace with your actual treasury wallet address
-  static const String treasuryWallet = 'EYBZmp5spqqozmn5TT4vf1x37GkGU7aq97NUFntZZbtv';
+  static const String treasuryWallet = 'YOUR_TREASURY_WALLET_ADDRESS_HERE';
 
   static const String _solanaRpc = 'https://api.mainnet-beta.solana.com';
 
