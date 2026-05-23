@@ -2,11 +2,18 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PhantomService {
   PhantomService._();
   static final PhantomService instance = PhantomService._();
+
+  /// Fires after a wallet connects successfully
+  final ValueNotifier<String?> lastConnectedWallet = ValueNotifier(null);
+
+  /// Fires after a payment signature is received and verified
+  final ValueNotifier<String?> lastPaymentSignature = ValueNotifier(null);
 
   static const String _appScheme = 'vela';
   static const String _appHost = 'phantom-callback';
@@ -16,7 +23,7 @@ class PhantomService {
   static const int cashDecimals = 6;
 
   // TODO: Replace with your actual treasury wallet address
-  static const String treasuryWallet = 'YOUR_TREASURY_WALLET_ADDRESS_HERE';
+  static const String treasuryWallet = 'EYBZmp5spqqozmn5TT4vf1x37GkGU7aq97NUFntZZbtv';
 
   static const String _solanaRpc = 'https://api.mainnet-beta.solana.com';
 
@@ -44,7 +51,7 @@ class PhantomService {
   String? parseConnectResponse(Uri uri) {
     if (uri.host != _appHost) return null;
     if (!uri.path.contains('connect')) return null;
-    return uri.queryParameters['phantom_encryption_public_key'];
+    return uri.queryParameters['public_key'];
   }
 
   Future<double> getCashBalance(String walletAddress) async {
@@ -105,6 +112,15 @@ class PhantomService {
     if (uri.host != _appHost) return null;
     if (!uri.path.contains('sign')) return null;
     return uri.queryParameters['signature'];
+  }
+
+  Future<void> disconnect() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    await Supabase.instance.client
+        .from('users')
+        .update({'solana_wallet': null})
+        .eq('user_id', userId);
   }
 
   Future<bool> isPhantomInstalled() async {

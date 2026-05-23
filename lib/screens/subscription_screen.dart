@@ -15,6 +15,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String _tier = 'free';
   String? _walletAddress;
   double? _cashBalance;
+  String? _expiresAt;
   int _remainingSessions = 0;
   bool _loading = true;
   bool _paying = false;
@@ -23,6 +24,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   void initState() {
     super.initState();
     _loadState();
+    PhantomService.instance.lastConnectedWallet.addListener(_onWalletEvent);
+    PhantomService.instance.lastPaymentSignature.addListener(_onPaymentEvent);
+  }
+
+  @override
+  void dispose() {
+    PhantomService.instance.lastConnectedWallet.removeListener(_onWalletEvent);
+    PhantomService.instance.lastPaymentSignature.removeListener(_onPaymentEvent);
+    super.dispose();
+  }
+
+  void _onWalletEvent() => _loadState();
+
+  void _onPaymentEvent() {
+    if (PhantomService.instance.lastPaymentSignature.value != null) {
+      _loadState();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Premium activated! Welcome aboard.')),
+        );
+      }
+    }
   }
 
   Future<void> _loadState() async {
@@ -33,13 +56,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     final userId = Supabase.instance.client.auth.currentUser?.id;
     String? wallet;
+    String? expiresAt;
     if (userId != null) {
       final data = await Supabase.instance.client
           .from('users')
-          .select('solana_wallet')
+          .select('solana_wallet, subscription_expires_at')
           .eq('user_id', userId)
           .maybeSingle();
       wallet = data?['solana_wallet'] as String?;
+      expiresAt = data?['subscription_expires_at'] as String?;
     }
 
     double? balance;
@@ -52,6 +77,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         _tier = tier;
         _walletAddress = wallet;
         _cashBalance = balance;
+        _expiresAt = expiresAt;
         _remainingSessions = remaining;
         _loading = false;
       });
@@ -157,6 +183,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     walletAddress: _walletAddress,
                     cashBalance: _cashBalance,
                     onConnect: _connectWallet,
+                    onDisconnect: () async {
+                      await PhantomService.instance.disconnect();
+                      _loadState();
+                    },
                   ),
                   const SizedBox(height: 24),
                   if (_tier == 'free') ...[
@@ -171,7 +201,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (_tier == 'premium') ...[
                     _SectionLabel('Your plan'),
                     const SizedBox(height: 12),
-                    _ActivePlanCard(),
+                    _ActivePlanCard(expiresAt: _expiresAt),
                   ],
                 ],
               ),
@@ -260,11 +290,13 @@ class _WalletCard extends StatelessWidget {
   final String? walletAddress;
   final double? cashBalance;
   final VoidCallback onConnect;
+  final VoidCallback onDisconnect;
 
   const _WalletCard({
     required this.walletAddress,
     required this.cashBalance,
     required this.onConnect,
+    required this.onDisconnect,
   });
 
   @override
@@ -313,6 +345,18 @@ class _WalletCard extends StatelessWidget {
                     ),
                   ),
                 ],
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: onDisconnect,
+                  child: Text(
+                    'Disconnect wallet',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 13,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
               ],
             )
           : Column(
@@ -424,8 +468,22 @@ class _FeatureRow extends StatelessWidget {
 }
 
 class _ActivePlanCard extends StatelessWidget {
+  final String? expiresAt;
+  const _ActivePlanCard({this.expiresAt});
+
   @override
   Widget build(BuildContext context) {
+    String expiryText = 'Your subscription renews monthly.';
+    if (expiresAt != null) {
+      final expiry = DateTime.tryParse(expiresAt!);
+      if (expiry != null) {
+        final daysLeft = expiry.difference(DateTime.now()).inDays;
+        expiryText = daysLeft > 0
+            ? 'Expires in $daysLeft day${daysLeft == 1 ? '' : 's'}. Pay again to renew.'
+            : 'Expired. Pay 25 CASH to reactivate.';
+      }
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -443,7 +501,7 @@ class _ActivePlanCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Your subscription renews monthly. To cancel, simply do not renew when it expires.',
+            expiryText,
             style: TextStyle(color: Colors.grey[500], fontSize: 14),
           ),
         ],

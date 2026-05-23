@@ -106,6 +106,7 @@ class _VelaAppState extends ConsumerState<VelaApp> {
     if (uri.host != 'phantom-callback') return;
 
     if (uri.path.contains('connect')) {
+      debugPrint('Phantom connect callback params: ${uri.queryParameters}');
       final pubkey = PhantomService.instance.parseConnectResponse(uri);
       if (pubkey != null) {
         final userId = Supabase.instance.client.auth.currentUser?.id;
@@ -114,12 +115,16 @@ class _VelaAppState extends ConsumerState<VelaApp> {
             .from('users')
             .update({'solana_wallet': pubkey})
             .eq('user_id', userId);
+          PhantomService.instance.lastConnectedWallet.value = pubkey;
         }
       }
     } else if (uri.path.contains('sign')) {
       final signature = PhantomService.instance.parseSignResponse(uri);
       if (signature != null) {
-        await SubscriptionService.instance.verifyPayment(signature);
+        final success = await SubscriptionService.instance.verifyPayment(signature);
+        if (success) {
+          PhantomService.instance.lastPaymentSignature.value = signature;
+        }
       }
     }
   }
