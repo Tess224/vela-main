@@ -19,7 +19,7 @@ class PhantomService {
   static const String cashMint = 'CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH';
   static const int cashDecimals = 6;
   static const String treasuryWallet = 'YOUR_TREASURY_WALLET_ADDRESS_HERE';
-  static const String _solanaRpc = 'https://api.mainnet-beta.solana.com';
+  static const String _solanaRpc = 'https://api.devnet.solana.com';
 
   final ValueNotifier<String?> lastConnectedWallet = ValueNotifier(null);
   final ValueNotifier<String?> lastPaymentSignature = ValueNotifier(null);
@@ -72,7 +72,7 @@ class PhantomService {
       'app_url': 'https://usevela.app',
       'dapp_encryption_public_key': base58.encode(_dappPublicKey!),
       'redirect_link': _redirectUri('connect'),
-      'cluster': 'mainnet-beta',
+      'cluster': 'devnet',
     };
 
     final uri = Uri.parse('$_phantomBase/connect')

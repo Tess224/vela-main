@@ -103,6 +103,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
+  Future<void> _cancelSubscription() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await Supabase.instance.client
+        .from('users')
+        .update({'subscription_tier': 'free', 'subscription_expires_at': null})
+        .eq('user_id', userId);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Subscription cancelled.')),
+      );
+      _loadState();
+    }
+  }
+
   Future<void> _subscribe() async {
     if (_walletAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -201,7 +218,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (_tier == 'premium') ...[
                     _SectionLabel('Your plan'),
                     const SizedBox(height: 12),
-                    _ActivePlanCard(expiresAt: _expiresAt),
+                    _ActivePlanCard(
+                      expiresAt: _expiresAt,
+                      paying: _paying,
+                      walletConnected: _walletAddress != null,
+                      onRenew: _subscribe,
+                      onCancel: _cancelSubscription,
+                    ),
                   ],
                 ],
               ),
@@ -469,18 +492,31 @@ class _FeatureRow extends StatelessWidget {
 
 class _ActivePlanCard extends StatelessWidget {
   final String? expiresAt;
-  const _ActivePlanCard({this.expiresAt});
+  final bool paying;
+  final bool walletConnected;
+  final VoidCallback onRenew;
+  final VoidCallback onCancel;
+  const _ActivePlanCard({
+    this.expiresAt,
+    required this.paying,
+    required this.walletConnected,
+    required this.onRenew,
+    required this.onCancel,
+  });
 
   @override
   Widget build(BuildContext context) {
     String expiryText = 'Your subscription renews monthly.';
+    bool expired = false;
+    int daysLeft = 0;
     if (expiresAt != null) {
       final expiry = DateTime.tryParse(expiresAt!);
       if (expiry != null) {
-        final daysLeft = expiry.difference(DateTime.now()).inDays;
-        expiryText = daysLeft > 0
-            ? 'Expires in $daysLeft day${daysLeft == 1 ? '' : 's'}. Pay again to renew.'
-            : 'Expired. Pay 25 CASH to reactivate.';
+        daysLeft = expiry.difference(DateTime.now()).inDays;
+        expired = daysLeft <= 0;
+        expiryText = expired
+            ? 'Expired. Pay 25 CASH to reactivate.'
+            : 'Expires in $daysLeft day${daysLeft == 1 ? '' : 's'}.';
       }
     }
 
@@ -490,7 +526,7 @@ class _ActivePlanCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF0F0F14),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFC9A6FF).withOpacity(0.2)),
+        border: Border.all(color: const Color(0xFFC9A6FF).withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,6 +539,63 @@ class _ActivePlanCard extends StatelessWidget {
           Text(
             expiryText,
             style: TextStyle(color: Colors.grey[500], fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: paying || !walletConnected ? null : onRenew,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B5CF6),
+                disabledBackgroundColor: Colors.grey[800],
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: paying
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(
+                      expired ? 'Reactivate — 25 CASH' : 'Renew early — 25 CASH',
+                      style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: const Color(0xFF1A1A2E),
+                    title: const Text('Cancel subscription?', style: TextStyle(color: Colors.white)),
+                    content: Text(
+                      'Your premium features will remain active until expiry. You won\'t be charged again unless you renew.',
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Keep', style: TextStyle(color: Color(0xFFC9A6FF))),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          onCancel();
+                        },
+                        child: const Text('Cancel subscription', style: TextStyle(color: Colors.redAccent)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: Text(
+                'Cancel subscription',
+                style: TextStyle(color: Colors.grey[600], fontSize: 13, decoration: TextDecoration.underline),
+              ),
+            ),
           ),
         ],
       ),
