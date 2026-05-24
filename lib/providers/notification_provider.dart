@@ -50,15 +50,43 @@ class NotificationRouter {
         });
         break;
       case 'ambient_checkin':
-        router.go('/dashboard');
+        _routeToResponseScreen(router, data, 'ambient_checkin');
         break;
       case 'ambient_nudge':
-        router.go('/dashboard');
+        _routeToResponseScreen(router, data, 'ambient_nudge');
         break;
       default:
         router.go('/dashboard');
     }
   }
+}
+
+void _routeToResponseScreen(GoRouter router, Map<String, dynamic> data, String type) {
+  final body = data['body'] as String? ?? '';
+  List<String> options = [];
+  try {
+    final optionsJson = data['response_options'] as String?;
+    if (optionsJson != null) {
+      final decoded = jsonDecode(optionsJson);
+      if (decoded is List) {
+        options = decoded.map((e) => e.toString()).toList();
+      }
+    }
+  } catch (_) {}
+
+  if (options.isEmpty) {
+    options = type == 'ambient_checkin'
+        ? ['Good', 'Okay', 'Not great']
+        : ['Yes', 'Not yet', 'Skipped'];
+  }
+
+  router.push('/nudge-response', extra: {
+    'nudge_id': data['nudge_id'] ?? '',
+    'checkin_id': data['checkin_id'],
+    'message_body': body,
+    'response_options': options,
+    'type': type,
+  });
 }
 
 final latestNotificationProvider = StateProvider<RemoteMessage?>((ref) => null);
@@ -112,10 +140,8 @@ Future<void> initializeNotificationListeners(
     } else if (type == 'ambient_checkin') {
       _showCheckinDialog(router, message);
     } else if (type == 'ambient_nudge') {
-      debugPrint('FCM: showing nudge — foreground dialog + local notification');
+      debugPrint('FCM: showing nudge — foreground dialog only');
       _showNudgeDialog(router, message);
-      // Also show as local notification in case dialog doesn't appear
-      service.showWithActions(message);
     } else {
       debugPrint('FCM: unhandled type=$type');
     }

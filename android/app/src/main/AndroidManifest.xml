@@ -49,7 +49,7 @@
     </queries>
 
     <application
-        android:label="vela_main"
+        android:label="Vela"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false">
