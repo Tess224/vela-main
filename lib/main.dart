@@ -100,6 +100,18 @@ class _VelaAppState extends ConsumerState<VelaApp> {
     super.initState();
     _appLinks = AppLinks();
     _appLinks!.uriLinkStream.listen(_handleDeepLink);
+    _checkInitialLink();
+  }
+
+  Future<void> _checkInitialLink() async {
+    try {
+      final initialUri = await _appLinks!.getInitialAppLink();
+      if (initialUri != null) {
+        _handleDeepLink(initialUri);
+      }
+    } catch (e) {
+      debugPrint('Initial link error: $e');
+    }
   }
 
   void _handleDeepLink(Uri uri) async {
