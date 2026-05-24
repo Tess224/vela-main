@@ -105,7 +105,7 @@ class _VelaAppState extends ConsumerState<VelaApp> {
 
   Future<void> _checkInitialLink() async {
     try {
-      final initialUri = await _appLinks!.getInitialAppLink();
+      final initialUri = await _appLinks!.getInitialLink();
       if (initialUri != null) {
         _handleDeepLink(initialUri);
       }
