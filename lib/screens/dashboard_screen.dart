@@ -107,7 +107,7 @@ class _DashboardHeader extends StatelessWidget {
           width: 22,
           height: 22,
           margin: const EdgeInsets.only(right: 10),
-          child: CustomPaint(painter: _VelaMarkPainter()),
+          child: Image.asset('assets/icon/vela_logo.png'),
         ),
         Expanded(
           child: Column(

@@ -17,14 +17,10 @@ class WelcomeScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(flex: 3),
-              const Text(
-                'Vela',
-                style: TextStyle(
-                  color: Color(0xFFC9A6FF),
-                  fontSize: 48,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1,
-                ),
+              Image.asset(
+                'assets/icon/vela_logo.png',
+                width: 100,
+                height: 100,
               ),
               const SizedBox(height: 16),
               Text(

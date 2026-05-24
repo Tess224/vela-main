@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:bs58/bs58.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:pinenacl/x25519.dart';
@@ -20,23 +21,12 @@ class PhantomService {
   static const String treasuryWallet = 'YOUR_TREASURY_WALLET_ADDRESS_HERE';
   static const String _solanaRpc = 'https://api.mainnet-beta.solana.com';
 
-  /// Fires after a wallet connects successfully
   final ValueNotifier<String?> lastConnectedWallet = ValueNotifier(null);
-
-  /// Fires after a payment signature is received and verified
   final ValueNotifier<String?> lastPaymentSignature = ValueNotifier(null);
 
-  // Ephemeral X25519 keypair for encrypted Phantom sessions
   PrivateKey? _dappSecretKey;
   Uint8List? _dappPublicKey;
-
-  // Phantom's X25519 public key (received on connect)
   Uint8List? _phantomPublicKey;
-
-  // Shared secret for decryption
-  Uint8List? _sharedSecret;
-
-  // Session token from Phantom
   String? _session;
 
   String _redirectUri(String action) {
@@ -48,23 +38,14 @@ class PhantomService {
     _dappPublicKey = Uint8List.fromList(_dappSecretKey!.publicKey.asTypedList);
   }
 
-  Uint8List _computeSharedSecret(Uint8List phantomPubKey) {
-    final box = Box(
-      myPrivateKey: _dappSecretKey!,
-      theirPublicKey: PublicKey(phantomPubKey),
-    );
-    // pinenacl Box uses the shared secret internally;
-    // we store the phantom key and decrypt using the Box directly
-    return phantomPubKey;
-  }
-
   Map<String, dynamic>? _decryptPayload({
     required String data,
     required String nonce,
   }) {
     try {
-      final encryptedData = base64Decode(data);
-      final nonceBytes = base64Decode(nonce);
+      // Phantom returns data and nonce as base58
+      final encryptedData = base58.decode(data);
+      final nonceBytes = base58.decode(nonce);
 
       final box = Box(
         myPrivateKey: _dappSecretKey!,
@@ -89,7 +70,7 @@ class PhantomService {
 
     final params = {
       'app_url': 'https://usevela.app',
-      'dapp_encryption_public_key': base64Encode(_dappPublicKey!),
+      'dapp_encryption_public_key': base58.encode(_dappPublicKey!),
       'redirect_link': _redirectUri('connect'),
       'cluster': 'mainnet-beta',
     };
@@ -108,19 +89,17 @@ class PhantomService {
     if (uri.host != _appHost) return null;
     if (!uri.path.contains('connect')) return null;
 
-    // Check for error
     final errorCode = uri.queryParameters['errorCode'];
     if (errorCode != null) {
       debugPrint('Phantom connect error: $errorCode - ${uri.queryParameters['errorMessage']}');
       return null;
     }
 
-    // Store Phantom's encryption public key
-    final phantomPubKeyBase64 = uri.queryParameters['phantom_encryption_public_key'];
-    if (phantomPubKeyBase64 == null) return null;
-    _phantomPublicKey = base64Decode(phantomPubKeyBase64);
+    // Phantom returns its encryption public key as base58
+    final phantomPubKeyB58 = uri.queryParameters['phantom_encryption_public_key'];
+    if (phantomPubKeyB58 == null) return null;
+    _phantomPublicKey = base58.decode(phantomPubKeyB58);
 
-    // Decrypt the data payload to get the actual wallet public_key + session
     final data = uri.queryParameters['data'];
     final nonce = uri.queryParameters['nonce'];
     if (data == null || nonce == null) return null;
@@ -179,14 +158,28 @@ class PhantomService {
       return false;
     }
 
+    // Encrypt the payload for Phantom
+    final nonce = _generateNonce();
+    final payloadJson = jsonEncode({
+      'session': _session,
+      'transaction': serializedTransaction,
+    });
+
+    final box = Box(
+      myPrivateKey: _dappSecretKey!,
+      theirPublicKey: PublicKey(_phantomPublicKey!),
+    );
+
+    final encrypted = box.encrypt(
+      Uint8List.fromList(utf8.encode(payloadJson)),
+      nonce: nonce,
+    );
+
     final params = {
-      'dapp_encryption_public_key': base64Encode(_dappPublicKey!),
+      'dapp_encryption_public_key': base58.encode(_dappPublicKey!),
       'redirect_link': _redirectUri('sign'),
-      'nonce': base64Encode(_generateNonce()),
-      'payload': base64Encode(utf8.encode(jsonEncode({
-        'session': _session,
-        'transaction': serializedTransaction,
-      }))),
+      'nonce': base58.encode(Uint8List.fromList(nonce)),
+      'payload': base58.encode(Uint8List.fromList(encrypted.cipherText)),
     };
 
     final uri = Uri.parse('$_phantomBase/signAndSendTransaction')
@@ -202,8 +195,9 @@ class PhantomService {
   Uint8List _generateNonce() {
     // 24-byte nonce for NaCl box
     final nonce = Uint8List(24);
+    final now = DateTime.now().microsecondsSinceEpoch;
     for (var i = 0; i < 24; i++) {
-      nonce[i] = DateTime.now().microsecondsSinceEpoch % 256;
+      nonce[i] = (now >> (i % 8)) & 0xFF;
     }
     return nonce;
   }
@@ -218,8 +212,6 @@ class PhantomService {
       return null;
     }
 
-    // For signAndSendTransaction, Phantom returns the signature
-    // In encrypted flow, it's in the data payload
     final data = uri.queryParameters['data'];
     final nonce = uri.queryParameters['nonce'];
 
@@ -228,7 +220,6 @@ class PhantomService {
       return payload?['signature'] as String?;
     }
 
-    // Fallback for non-encrypted response
     return uri.queryParameters['signature'];
   }
 
@@ -236,7 +227,6 @@ class PhantomService {
     _dappSecretKey = null;
     _dappPublicKey = null;
     _phantomPublicKey = null;
-    _sharedSecret = null;
     _session = null;
 
     final userId = Supabase.instance.client.auth.currentUser?.id;

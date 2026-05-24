@@ -290,6 +290,8 @@ class _SetupScreenState extends State<SetupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
+              Image.asset('assets/icon/vela_logo.png', width: 64, height: 64),
+              const SizedBox(height: 8),
               const Text('Vela',
                   style: TextStyle(
                       color: Color(0xFFC9A6FF),
