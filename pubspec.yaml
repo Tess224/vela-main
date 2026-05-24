@@ -49,8 +49,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/
-  assets:
-    - assets/icon/
 
 dependency_overrides:
   record_linux: 1.3.0
