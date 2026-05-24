@@ -50,10 +50,10 @@ class NotificationRouter {
         });
         break;
       case 'ambient_checkin':
-        _routeToResponseScreen(router, data, 'ambient_checkin');
+        router.push('/notifications', extra: {'tab': 2});
         break;
       case 'ambient_nudge':
-        _routeToResponseScreen(router, data, 'ambient_nudge');
+        router.push('/notifications', extra: {'tab': 1});
         break;
       default:
         router.go('/dashboard');
@@ -61,33 +61,7 @@ class NotificationRouter {
   }
 }
 
-void _routeToResponseScreen(GoRouter router, Map<String, dynamic> data, String type) {
-  final body = data['body'] as String? ?? '';
-  List<String> options = [];
-  try {
-    final optionsJson = data['response_options'] as String?;
-    if (optionsJson != null) {
-      final decoded = jsonDecode(optionsJson);
-      if (decoded is List) {
-        options = decoded.map((e) => e.toString()).toList();
-      }
-    }
-  } catch (_) {}
-
-  if (options.isEmpty) {
-    options = type == 'ambient_checkin'
-        ? ['Good', 'Okay', 'Not great']
-        : ['Yes', 'Not yet', 'Skipped'];
-  }
-
-  router.push('/nudge-response', extra: {
-    'nudge_id': data['nudge_id'] ?? '',
-    'checkin_id': data['checkin_id'],
-    'message_body': body,
-    'response_options': options,
-    'type': type,
-  });
-}
+  
 
 final latestNotificationProvider = StateProvider<RemoteMessage?>((ref) => null);
 

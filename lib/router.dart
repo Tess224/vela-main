@@ -30,7 +30,7 @@ import 'screens/subscription_screen.dart';
 import 'screens/goals_screen.dart';
 import 'screens/add_goal_screen.dart';
 import 'models/goal_model.dart';
-import 'screens/nudge_response_screen.dart';
+
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -104,7 +104,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Notifications inbox
       GoRoute(
         path: '/notifications',
-        builder: (context, state) => const NotificationsScreen(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return NotificationsScreen(initialTab: extra?['tab'] as int? ?? 0);
+        },
       ),
       
       // Session screen — voice + waveform avatar
@@ -181,23 +184,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final existing = state.extra as GoalModel?;
           return AddGoalScreen(existing: existing);
-        },
-      ),
-
-      // Nudge/checkin response screen
-      GoRoute(
-        path: '/nudge-response',
-        builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>;
-          return NudgeResponseScreen(
-            nudgeId: extra['nudge_id'] ?? '',
-            messageBody: extra['message_body'] ?? '',
-            responseOptions: (extra['response_options'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ?? ['Yes', 'Not yet', 'Skipped'],
-            type: extra['type'] ?? 'ambient_nudge',
-            checkinId: extra['checkin_id'],
-          );
         },
       ),
 
