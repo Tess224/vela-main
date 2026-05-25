@@ -92,26 +92,25 @@ Future<void> initializeNotificationListeners(
     });
   }
 
-  // 1b. Terminated state — data-only messages (Kotlin local notification tap)
-  if (initialMessage == null) {
-    try {
-      const channel = MethodChannel('com.tess224.vela_main/notification');
-      final extras = await channel.invokeMethod<Map>('getNotificationExtras');
-      if (extras != null && extras['from_notification'] == 'true') {
-        final data = extras.cast<String, dynamic>();
-        final type = data['type'] as String?;
-        debugPrint('FCM: launched from Kotlin notification tap, type=$type');
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (type == 'ambient_nudge') {
-            router.push('/notifications', extra: {'tab': 1});
-          } else if (type == 'ambient_checkin') {
-            router.push('/notifications', extra: {'tab': 2});
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('FCM: no Kotlin notification extras: $e');
+  // 1b. Terminated/background state — data-only messages (Kotlin local notification tap)
+  try {
+    const channel = MethodChannel('com.tess224.vela_main/notification');
+    final extras = await channel.invokeMethod<Map>('getNotificationExtras');
+    debugPrint('FCM: MethodChannel extras=$extras');
+    if (extras != null && extras['from_notification'] == 'true') {
+      final data = extras.cast<String, dynamic>();
+      final type = data['type'] as String?;
+      debugPrint('FCM: launched from Kotlin notification tap, type=$type');
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (type == 'ambient_nudge') {
+          router.push('/notifications', extra: {'tab': 1});
+        } else if (type == 'ambient_checkin') {
+          router.push('/notifications', extra: {'tab': 2});
+        }
+      });
     }
+  } catch (e) {
+    debugPrint('FCM: MethodChannel error: $e');
   }
 
   // 2. Background state — user tapped notification while app was backgrounded
