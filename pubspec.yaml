@@ -26,7 +26,7 @@ dependencies:
   device_info_plus: 10.1.2
   url_launcher: 6.2.5
   app_links: 6.4.1
-  health: 11.0.0
+  health: 12.1.0
   pinenacl: 0.6.0
   bs58: 1.0.2
   
