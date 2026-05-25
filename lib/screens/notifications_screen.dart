@@ -251,11 +251,13 @@ class _NudgesTabState extends State<_NudgesTab> {
           .from('scheduled_nudges')
           .select('nudge_id, message_title, message_body, response_options, response_value, responded_at, scheduled_for, sent_at, source, nudge_type')
           .eq('user_id', userId)
-          .not('sent_at', 'is', null)
+          .not('sent_at', 'is', 'null')
           .order('sent_at', ascending: false)
           .limit(50);
-      return List<Map<String, dynamic>>.from(rows as List);
-    } catch (_) {
+      debugPrint('Nudges fetch: got ${(rows as List).length} rows');
+      return List<Map<String, dynamic>>.from(rows);
+    } catch (e) {
+      debugPrint('Nudges fetch error: $e');
       return [];
     }
   }
@@ -462,11 +464,13 @@ class _CheckinsTab extends StatelessWidget {
           .from('ambient_checkins')
           .select('checkin_id, question_text, response_value, responded_at, sent_at, metric_type, trigger_context')
           .eq('user_id', userId)
-          .not('sent_at', 'is', null)
+          .not('sent_at', 'is', 'null')
           .order('sent_at', ascending: false)
           .limit(50);
-      return List<Map<String, dynamic>>.from(rows as List);
-    } catch (_) {
+      debugPrint('Checkins fetch: got ${(rows as List).length} rows');
+      return List<Map<String, dynamic>>.from(rows);
+    } catch (e) {
+      debugPrint('Checkins fetch error: $e');
       return [];
     }
   }
