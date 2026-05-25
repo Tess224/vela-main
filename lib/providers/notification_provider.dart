@@ -92,15 +92,14 @@ Future<void> initializeNotificationListeners(
     });
   }
 
-  // 1b. Terminated/background state — data-only messages (Kotlin local notification tap)
+  // 1b. Terminated state — data-only messages (Kotlin local notification tap on cold start)
+  const channel = MethodChannel('com.tess224.vela_main/notification');
   try {
-    const channel = MethodChannel('com.tess224.vela_main/notification');
     final extras = await channel.invokeMethod<Map>('getNotificationExtras');
-    debugPrint('FCM: MethodChannel extras=$extras');
+    debugPrint('FCM: MethodChannel cold start extras=$extras');
     if (extras != null && extras['from_notification'] == 'true') {
-      final data = extras.cast<String, dynamic>();
-      final type = data['type'] as String?;
-      debugPrint('FCM: launched from Kotlin notification tap, type=$type');
+      final type = extras['type'] as String?;
+      debugPrint('FCM: cold start notification tap, type=$type');
       Future.delayed(const Duration(milliseconds: 300), () {
         if (type == 'ambient_nudge') {
           router.push('/notifications', extra: {'tab': 1});
@@ -110,8 +109,22 @@ Future<void> initializeNotificationListeners(
       });
     }
   } catch (e) {
-    debugPrint('FCM: MethodChannel error: $e');
+    debugPrint('FCM: MethodChannel cold start error: $e');
   }
+
+  // 1c. Background state — Kotlin pushes notification tap via invokeMethod
+  channel.setMethodCallHandler((call) async {
+    if (call.method == 'onNotificationTap') {
+      final data = Map<String, dynamic>.from(call.arguments as Map);
+      final type = data['type'] as String?;
+      debugPrint('FCM: background notification tap pushed from Kotlin, type=$type');
+      if (type == 'ambient_nudge') {
+        router.push('/notifications', extra: {'tab': 1});
+      } else if (type == 'ambient_checkin') {
+        router.push('/notifications', extra: {'tab': 2});
+      }
+    }
+  });
 
   // 2. Background state — user tapped notification while app was backgrounded
   service.onMessageOpenedApp.listen((message) {
