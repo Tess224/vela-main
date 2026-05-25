@@ -35,6 +35,9 @@
             <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
         </intent>
         <intent>
+            <action android:name="android.health.connect.action.SHOW_ONBOARDING"/>
+        </intent>
+        <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
@@ -83,8 +86,11 @@
             <!-- Health Connect rationale intent — required by the Health Connect spec.
                  When user taps "About this permission" in the Health Connect dialog,
                  it routes here. The activity handles the intent (or ignores it). -->
-            <intent-filter>
+              <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.health.connect.action.SHOW_ONBOARDING"/>
             </intent-filter>
             <!-- Phantom wallet deep link callback -->
             <intent-filter>
@@ -95,6 +101,16 @@
             </intent-filter>
 
         </activity>
+
+        <activity-alias
+            android:name=".HealthConnectPermissionRationale"
+            android:exported="true"
+            android:targetActivity=".MainActivity"
+            android:permission="android.permission.health.START_ONBOARDING">
+            <intent-filter>
+                <action android:name="android.health.connect.action.SHOW_ONBOARDING"/>
+            </intent-filter>
+        </activity-alias>
 
         <receiver android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
