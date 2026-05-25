@@ -58,14 +58,13 @@ class VelaMessagingService : FirebaseMessagingService() {
         channel.description = "Health deviation alerts from Vela"
         manager.createNotificationChannel(channel)
 
-        // Tap intent — opens the app
+        // Tap intent — opens the app with all FCM data as extras
         val tapIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
         if (tapIntent != null) {
-            tapIntent.putExtra("type", "context_confirm")
-            tapIntent.putExtra("event_id", eventId)
             for ((k, v) in data) {
                 tapIntent.putExtra(k, v)
             }
+            tapIntent.putExtra("from_notification", "true")
             tapIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val tapPending = PendingIntent.getActivity(
