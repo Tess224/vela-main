@@ -62,7 +62,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final data = await Supabase.instance.client
           .from('users')
-          .select('username, occupation')
+          .select('username, occupation, sleep_time')
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -79,6 +79,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         } else if (occ.isNotEmpty) {
           _occupation = 'Other';
           _customOccupationController.text = occ;
+        }
+        final st = data['sleep_time'] as String?;
+        if (st != null && _times.contains(st)) {
+          _sleepTime = st;
         }
       });
     } catch (e) {
@@ -118,6 +122,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await SupabaseService.instance.updateUserProfile(userId, {
         'username': name,
         'occupation': _occupationForDatabase(),
+        'sleep_time': _sleepTime,
       });
 
       if (mounted) {
