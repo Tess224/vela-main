@@ -94,6 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await SupabaseService.instance.updateUserProfile(userId, {
         'username': name,
         if (occupation.isNotEmpty) 'occupation': occupation,
+        'sleep_time': _sleepTime,
       });
 
       // Trigger first health data sync

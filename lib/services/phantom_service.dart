@@ -16,7 +16,7 @@ class PhantomService {
   static const String _appHost = 'phantom-callback';
   static const String _phantomBase = 'https://phantom.app/ul/v1';
 
-  static const String cashMint = 'CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH';
+  static const String cashMint = 'CASHpQf7uhKff6psPnnDfCdVAhe2jASzz8ePyYU4fSfS';
   static const int cashDecimals = 6;
   static const String treasuryWallet = 'YOUR_TREASURY_WALLET_ADDRESS_HERE';
   static const String _solanaRpc = 'https://api.devnet.solana.com';
