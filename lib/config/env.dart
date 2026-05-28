@@ -13,6 +13,8 @@ class Env {
       'https://vela-backend2-production-afe7.up.railway.app';
   static const String monitoringEngineUrl =
       'https://vela-backend2-production-9b0e.up.railway.app';
+  static const String plannerUrl =
+      'https://vela-backend2-production-351e.up.railway.app';
 
   // Supabase (URL is not secret — anon key is stored in secure storage)
   static const String supabaseUrl =

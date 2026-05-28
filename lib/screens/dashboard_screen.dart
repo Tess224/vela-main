@@ -7,6 +7,9 @@ import 'package:go_router/go_router.dart';
 import '../models/monitoring_event_model.dart';
 import '../models/user_memory_model.dart';
 import '../models/session_record_model.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/env.dart';
 import '../services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/user_provider.dart';
@@ -55,7 +58,9 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           const _ProfileCompletionCard(),
           const SizedBox(height: 12),
-          const _UpcomingEventCard(),
+          const QuickGoalInput(),
+              const SizedBox(height: 8),
+              const _UpcomingEventCard(),
           const SizedBox(height: 16),
           memoryAsync.when(
             data: (memory) {
@@ -453,6 +458,101 @@ class _EmptyDashboard extends StatelessWidget {
             icon: const Icon(Icons.mic, size: 18),
             label: const Text('Start a session'),
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC9A6FF), foregroundColor: const Color(0xFF0A0010), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class QuickGoalInput extends StatefulWidget {
+  const QuickGoalInput({super.key});
+
+  @override
+  State<QuickGoalInput> createState() => _QuickGoalInputState();
+}
+
+class _QuickGoalInputState extends State<QuickGoalInput> {
+  final _controller = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _controller.text.trim();
+    if (text.length < 3 || _sending) return;
+
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    setState(() => _sending = true);
+
+    try {
+      final uri = Uri.parse('${Env.plannerUrl}/quick-goal');
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId, 'text': text}),
+      );
+
+      if (resp.statusCode == 200 && mounted) {
+        _controller.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Goal added — Vela is planning'), duration: Duration(seconds: 2)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e'), duration: const Duration(seconds: 2)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Tell Vela what you need to do...',
+                hintStyle: TextStyle(color: Colors.grey[700], fontFamily: 'Rajdhani', fontSize: 14),
+                filled: true,
+                fillColor: const Color(0xFF0C0C10),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0x0FFFFFFF))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFC9A6FF), width: 0.5)),
+              ),
+              onSubmitted: (_) => _submit(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _submit,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _sending ? const Color(0xFF1A1A2E) : const Color(0xFFC9A6FF),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: _sending
+                  ? const Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC9A6FF)))
+                  : const Icon(Icons.send_rounded, color: Color(0xFF0A0010), size: 20),
+            ),
           ),
         ],
       ),
