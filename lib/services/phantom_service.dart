@@ -153,6 +153,7 @@ class PhantomService {
   }
 
   Future<bool> requestPayment({required String serializedTransaction}) async {
+    debugPrint('requestPayment called. session=$_session, hasSecret=${_dappSecretKey != null}, hasPhantomKey=${_phantomPublicKey != null}');
     if (_session == null || _dappSecretKey == null || _phantomPublicKey == null) {
       debugPrint('Phantom session not established. Connect wallet first.');
       return false;
@@ -185,7 +186,10 @@ class PhantomService {
     final uri = Uri.parse('$_phantomBase/signAndSendTransaction')
         .replace(queryParameters: params);
 
-    if (await canLaunchUrl(uri)) {
+    debugPrint('Payment URI: $uri');
+    final canLaunch = await canLaunchUrl(uri);
+    debugPrint('canLaunchUrl result: $canLaunch');
+    if (canLaunch) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
       return true;
     }
