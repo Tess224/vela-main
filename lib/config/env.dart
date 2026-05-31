@@ -16,7 +16,9 @@ class Env {
   static const String plannerUrl =
       'https://vela-backend2-production-351e.up.railway.app';
 
-  // Supabase (URL is not secret — anon key is stored in secure storage)
+  // Supabase (anon key is public — gated by RLS, safe to bundle)
   static const String supabaseUrl =
       'https://wgvhkczioxfhkydjoodm.supabase.co';
+  static const String supabaseAnonKey =
+      'YOUR_ANON_KEY_HERE'; // <-- paste your real anon key
 }
