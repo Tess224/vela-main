@@ -20,5 +20,5 @@ class Env {
   static const String supabaseUrl =
       'https://wgvhkczioxfhkydjoodm.supabase.co';
   static const String supabaseAnonKey =
-      'YOUR_ANON_KEY_HERE'; // <-- paste your real anon key
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndndmhrY3ppb3hmaGt5ZGpvb2RtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMTg5NjQsImV4cCI6MjA5MDc5NDk2NH0.WkbA8ProH9d4OuKDxRq-Mwts6gbpWkEtTt7svWn5Uz4'; // <-- paste your real anon key
 }
