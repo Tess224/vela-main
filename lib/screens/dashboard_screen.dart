@@ -14,6 +14,7 @@ import '../services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/user_provider.dart';
 import '../core/health/health_data_manager.dart';
+import '../widgets/context_capture_bar.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final String? highlightEventId;
@@ -59,6 +60,8 @@ class DashboardScreen extends ConsumerWidget {
           const _ProfileCompletionCard(),
           const SizedBox(height: 12),
           const QuickGoalInput(),
+              const SizedBox(height: 8),
+              const ContextCaptureBar(),
               const SizedBox(height: 8),
               const _UpcomingEventCard(),
           const SizedBox(height: 16),
