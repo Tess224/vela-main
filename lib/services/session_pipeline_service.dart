@@ -65,8 +65,14 @@ class SessionPipelineService {
 
     final client = HttpClient();
     final request = await client.postUrl(uri);
+    final accessToken = Supabase.instance.client.auth.currentSession?.accessToken;
+    if (accessToken == null) {
+      throw SessionPipelineException('No access token available');
+    }
+
     request.headers.set('Content-Type', 'application/json; charset=utf-8');
     request.headers.set('Accept', 'text/event-stream');
+    request.headers.set('Authorization', 'Bearer $accessToken');
 
     final body = <String, dynamic>{
       'user_id': userId,
@@ -188,9 +194,17 @@ class SessionPipelineService {
   }) async {
     final uri = Uri.parse('${Env.sessionPipelineUrl}/session/end');
 
+    final accessToken = Supabase.instance.client.auth.currentSession?.accessToken;
+    if (accessToken == null) {
+      throw SessionPipelineException('No access token available');
+    }
+
     final response = await http.post(
       uri,
-      headers: {'Content-Type': 'application/json; charset=utf-8'},
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer $accessToken',
+      },
       body: utf8.encode(jsonEncode({
         'session_id': sessionId,
         'transcript': transcript,

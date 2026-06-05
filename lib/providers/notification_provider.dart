@@ -358,7 +358,10 @@ Future<void> _sendCheckinResponse(String checkinId, String response) async {
     final uri = Uri.parse('${Env.sessionPipelineUrl}/checkin/respond');
     await http.post(
       uri,
-      headers: {'Content-Type': 'application/json; charset=utf-8'},
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': 'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken}',
+      },
       body: jsonEncode({
         'checkin_id': checkinId,
         'response_value': response,

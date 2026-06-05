@@ -138,7 +138,10 @@ class SubscriptionService {
     try {
       final response = await http.post(
         Uri.parse('${Env.sessionPipelineUrl}/subscription/build-tx'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${_client.auth.currentSession?.accessToken}',
+        },
         body: jsonEncode({
           'user_id': _client.auth.currentUser?.id,
           'wallet_address': walletAddress,
@@ -159,7 +162,10 @@ class SubscriptionService {
     try {
       final response = await http.post(
         Uri.parse('${Env.sessionPipelineUrl}/subscription/verify'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${_client.auth.currentSession?.accessToken}',
+        },
         body: jsonEncode({
           'user_id': _client.auth.currentUser?.id,
           'signature': signature,

@@ -17,9 +17,17 @@ class STTClient {
   Future<String> transcribe(Uint8List audioBytes) async {
     final uri = Uri.parse('${Env.sessionPipelineUrl}/voice/transcribe');
 
+    final accessToken = Supabase.instance.client.auth.currentSession?.accessToken;
+    if (accessToken == null) {
+      throw STTException('No access token available');
+    }
+
     final response = await http.post(
       uri,
-      headers: {'Content-Type': 'audio/mp4'},
+      headers: {
+        'Content-Type': 'audio/mp4',
+        'Authorization': 'Bearer $accessToken',
+      },
       body: audioBytes,
     );
 
