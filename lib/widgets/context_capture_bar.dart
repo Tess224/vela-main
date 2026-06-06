@@ -32,9 +32,15 @@ class _ContextCaptureBarState extends State<ContextCaptureBar> {
 
     setState(() => _sending = true);
     try {
+      final accessToken = Supabase.instance.client.auth.currentSession?.accessToken;
+      if (accessToken == null) return;
+
       final resp = await http.post(
         Uri.parse('${Env.sessionPipelineUrl}/context-capture'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
         body: jsonEncode({'user_id': _userId, 'text': text.trim()}),
       );
 
@@ -66,9 +72,15 @@ class _ContextCaptureBarState extends State<ContextCaptureBar> {
 
     setState(() => _sending = true);
     try {
+      final accessToken = Supabase.instance.client.auth.currentSession?.accessToken;
+      if (accessToken == null) return;
+
       final resp = await http.post(
         Uri.parse('${Env.sessionPipelineUrl}/context-capture'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
         body: jsonEncode({'user_id': _userId, 'audio_base64': audioBase64}),
       );
 

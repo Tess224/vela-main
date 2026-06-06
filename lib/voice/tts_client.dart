@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
 
@@ -15,9 +16,17 @@ class TTSClient {
     final uri = Uri.parse('${Env.sessionPipelineUrl}/voice/synthesize');
 
     debugPrint('TTS: requesting synthesis for "${sentence.substring(0, sentence.length.clamp(0, 50))}"');
+    final accessToken = Supabase.instance.client.auth.currentSession?.accessToken;
+    if (accessToken == null) {
+      throw TTSException('No access token available');
+    }
+
     final response = await http.post(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      },
       body: jsonEncode({'text': sentence}),
     );
 
