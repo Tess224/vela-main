@@ -492,31 +492,39 @@ class _QuickGoalInputState extends State<QuickGoalInput> {
     final text = _controller.text.trim();
     if (text.length < 3 || _sending) return;
 
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-
     setState(() => _sending = true);
 
     try {
-      final uri = Uri.parse('${Env.plannerUrl}/quick-goal');
-      final resp = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user_id': userId, 'text': text}),
+      await ApiClient.instance.postJson(
+        '${Env.plannerUrl}/quick-goal',
+        body: {'text': text},
       );
-
-      if (resp.statusCode == 200 && mounted) {
-        _controller.clear();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Goal added — Vela is planning'), duration: Duration(seconds: 2)),
-        );
-      }
+      if (!mounted) return;
+      _controller.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Goal added — Vela is planning'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.isAuthError
+              ? 'Sign in again to add goals'
+              : 'Failed: ${e.message}'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), duration: const Duration(seconds: 2)),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _sending = false);
     }

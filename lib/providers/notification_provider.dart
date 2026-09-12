@@ -15,6 +15,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 
 import '../config/env.dart';
+import '../services/api_client.dart';
 import '../services/notification_service.dart';
 
 class NotificationRouter {
@@ -161,13 +162,13 @@ Future<void> initializeNotificationListeners(
 /// Write the user's action button response to monitoring_events
 Future<void> _writeEventResponse(String eventId, String actionId) async {
   try {
-    await Supabase.instance.client.from('monitoring_events').update({
-      'context_response': actionId,
-      'response_received': true,
-    }).eq('event_id', eventId);
-    debugPrint('Event response written: $actionId for $eventId');
+    await ApiClient.instance.postJson(
+      '${Env.monitoringEngineUrl}/event/respond',
+      body: {'event_id': eventId, 'context_response': actionId},
+    );
+    debugPrint('Event response sent: $actionId for $eventId');
   } catch (e) {
-    debugPrint('Event response write failed: $e');
+    debugPrint('Event response failed: $e');
   }
 }
 
@@ -221,28 +222,13 @@ void _showNudgeDialog(
 
 Future<void> _writeNudgeResponse(String nudgeId, String response) async {
   try {
-    final pipelineUrl = Env.sessionPipelineUrl;
-    await http.post(
-      Uri.parse('$pipelineUrl/nudge/respond'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'nudge_id': nudgeId,
-        'response_value': response,
-      }),
+    await ApiClient.instance.postJson(
+      '${Env.sessionPipelineUrl}/nudge/respond',
+      body: {'nudge_id': nudgeId, 'response_value': response},
     );
     debugPrint('Nudge response sent: $response for $nudgeId');
   } catch (e) {
     debugPrint('Nudge response failed: $e');
-    // Fallback: write directly to DB
-    try {
-      await Supabase.instance.client.from('scheduled_nudges').update({
-        'response_value': response,
-        'responded_at': DateTime.now().toIso8601String(),
-      }).eq('nudge_id', nudgeId);
-      debugPrint('Nudge response written directly to DB');
-    } catch (e2) {
-      debugPrint('Nudge direct write also failed: $e2');
-    }
   }
 }
 

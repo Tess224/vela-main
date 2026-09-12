@@ -394,8 +394,9 @@ class _NudgeRow extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () {
+                    final messenger = ScaffoldMessenger.of(ctx);
                     Navigator.of(ctx).pop();
-                    _sendResponse(nudgeId, option);
+                    _sendResponse(nudgeId, option, messenger);
                   },
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: Colors.grey[700]!),
@@ -413,23 +414,26 @@ class _NudgeRow extends StatelessWidget {
     );
   }
 
-  Future<void> _sendResponse(String nudgeId, String response) async {
+  Future<void> _sendResponse(
+    String nudgeId,
+    String response,
+    ScaffoldMessengerState messenger,
+  ) async {
     try {
-      final pipelineUrl = Env.sessionPipelineUrl;
-      await http.post(
-        Uri.parse('$pipelineUrl/nudge/respond'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'nudge_id': nudgeId, 'response_value': response}),
+      await ApiClient.instance.postJson(
+        '${Env.sessionPipelineUrl}/nudge/respond',
+        body: {'nudge_id': nudgeId, 'response_value': response},
       );
+      onResponded();
     } catch (e) {
-      try {
-        await Supabase.instance.client.from('scheduled_nudges').update({
-          'response_value': response,
-          'responded_at': DateTime.now().toIso8601String(),
-        }).eq('nudge_id', nudgeId);
-      } catch (_) {}
+      debugPrint('Nudge response failed: $e');
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text("Couldn't save that response — try again"),
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
-    onResponded();
   }
 }
 

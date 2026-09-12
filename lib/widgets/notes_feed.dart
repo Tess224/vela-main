@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
+import '../services/api_client.dart';
 
 class NotesFeed extends StatefulWidget {
   const NotesFeed({super.key});
@@ -27,31 +28,26 @@ class _NotesFeedState extends State<NotesFeed> {
   }
 
   Future<void> _fetchNotes() async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-
     try {
-      final resp = await http.get(
-        Uri.parse('${Env.sessionPipelineUrl}/notes?user_id=$userId&limit=10'),
+      final data = await ApiClient.instance.getJson(
+        '${Env.sessionPipelineUrl}/notes?limit=10',
       );
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body) as Map<String, dynamic>;
-        final list = (data['notes'] as List).cast<Map<String, dynamic>>();
-        if (mounted) setState(() { _notes = list; _loading = false; });
-      }
-    } catch (_) {
+      final list =
+          (data['notes'] as List? ?? const []).cast<Map<String, dynamic>>();
+      if (mounted) setState(() { _notes = list; _loading = false; });
+    } catch (e) {
+      debugPrint('Notes fetch failed: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _markRead(String noteId) async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-    await http.post(
-      Uri.parse('${Env.sessionPipelineUrl}/notes/$noteId/read'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'user_id': userId}),
-    );
+    try {
+      await ApiClient.instance
+          .postJson('${Env.sessionPipelineUrl}/notes/$noteId/read');
+    } catch (e) {
+      debugPrint('Mark read failed: $e');
+    }
   }
 
   @override
