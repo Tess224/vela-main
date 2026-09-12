@@ -151,6 +151,8 @@ class _VelaAppState extends ConsumerState<VelaApp> {
           final userId = Supabase.instance.client.auth.currentUser?.id;
           if (userId != null) {
             await NotificationService.instance.registerToken(userId);
+            // Deliver any action-button taps the background receiver queued.
+            await PendingResponseQueue.instance.drain();
             // Sync health data on every app boot (no permission request —
             // permissions are handled during onboarding)
             final manager = HealthDataManager();

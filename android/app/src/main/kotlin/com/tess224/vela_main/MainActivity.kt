@@ -15,13 +15,26 @@ class MainActivity: FlutterActivity() {
 
         notificationChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.tess224.vela_main/notification")
         notificationChannel!!.setMethodCallHandler { call, result ->
-            if (call.method == "getNotificationExtras") {
-                android.util.Log.d("VelaMessaging", "getNotificationExtras called, extras=$notificationExtras")
-                val extras = notificationExtras
-                notificationExtras = null
-                result.success(extras)
-            } else {
-                result.notImplemented()
+            when (call.method) {
+                "getNotificationExtras" -> {
+                    android.util.Log.d("VelaMessaging", "getNotificationExtras called, extras=$notificationExtras")
+                    val extras = notificationExtras
+                    notificationExtras = null
+                    result.success(extras)
+                }
+                // Action-button taps that could not be delivered from the
+                // background receiver. Returned as a JSON string so the
+                // queue format stays owned by one side.
+                "getPendingResponses" -> {
+                    result.success(PendingResponseStore.readAll(applicationContext))
+                }
+                "clearPendingResponses" -> {
+                    val ids = (call.arguments as? List<*>)
+                        ?.filterIsInstance<String>()?.toSet() ?: emptySet()
+                    PendingResponseStore.remove(applicationContext, ids)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
             }
         }
     }
