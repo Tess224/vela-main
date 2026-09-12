@@ -10,6 +10,7 @@ import '../models/session_record_model.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/env.dart';
+import '../services/api_client.dart';
 import '../services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/user_provider.dart';

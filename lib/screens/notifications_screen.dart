@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
 import '../models/monitoring_event_model.dart';
+import '../services/api_client.dart';
 
 class NotificationsScreen extends StatefulWidget {
   final int initialTab;
