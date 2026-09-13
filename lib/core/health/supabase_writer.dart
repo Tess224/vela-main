@@ -37,28 +37,62 @@ class ObservationRecord {
 }
 
 class SupabaseWriter {
+  /// Identity of a reading: metric + instant.
+  ///
+  /// Compared as epoch milliseconds, never as formatted strings. The previous
+  /// version compared Dart's local-time output ("...T04:07:56.481") against
+  /// PostgREST's ("...T04:07:56.481+00:00"); those never matched, so nothing
+  /// was ever deduped and every sync re-inserted its whole 24h window.
+  static String? _key(String? metricType, String? timestamp) {
+    if (metricType == null || timestamp == null) return null;
+    final parsed = DateTime.tryParse(timestamp);
+    if (parsed == null) return null;
+    return '${metricType}_${parsed.toUtc().millisecondsSinceEpoch}';
+  }
+
   static Future<void> batchInsert(List<ObservationRecord> records) async {
     if (records.isEmpty) return;
 
-    // Dedup: fetch existing timestamps for this user+metric combination
-    // to avoid writing duplicate rows from repeated syncs
     final userId = records.first.userId;
-    final timestamps = records.map((r) => r.timestamp).toList();
 
-    final existing = await Supabase.instance.client
-        .from('baseline_observations')
-        .select('metric_type, timestamp')
-        .eq('user_id', userId)
-        .inFilter('timestamp', timestamps);
+    // Bound the lookup by time rather than by an IN list of every timestamp —
+    // that list grows with sample count and can overflow the request URL.
+    final instants = records
+        .map((r) => DateTime.tryParse(r.timestamp)?.toUtc())
+        .whereType<DateTime>()
+        .toList();
+    if (instants.isEmpty) return;
+
+    instants.sort();
+    final earliest = instants.first.subtract(const Duration(seconds: 1));
+    final latest = instants.last.add(const Duration(seconds: 1));
 
     final existingKeys = <String>{};
-    for (final row in existing as List) {
-      existingKeys.add('${row['metric_type']}_${row['timestamp']}');
+    try {
+      final existing = await Supabase.instance.client
+          .from('baseline_observations')
+          .select('metric_type, timestamp')
+          .eq('user_id', userId)
+          .gte('timestamp', earliest.toIso8601String())
+          .lte('timestamp', latest.toIso8601String());
+
+      for (final row in existing as List) {
+        final key = _key(row['metric_type'] as String?, row['timestamp'] as String?);
+        if (key != null) existingKeys.add(key);
+      }
+    } catch (e) {
+      // A failed dedupe read must not become a silent duplicate write.
+      throw Exception('Dedupe check failed, skipping write: $e');
     }
 
-    final deduped = records.where((r) =>
-      !existingKeys.contains('${r.metricType}_${r.timestamp}')
-    ).toList();
+    // Also guard against duplicates inside this batch.
+    final seen = <String>{};
+    final deduped = <ObservationRecord>[];
+    for (final r in records) {
+      final key = _key(r.metricType, r.timestamp);
+      if (key == null || existingKeys.contains(key) || !seen.add(key)) continue;
+      deduped.add(r);
+    }
 
     if (deduped.isEmpty) return;
 
