@@ -49,6 +49,10 @@ class SessionNotifier extends StateNotifier<SessionModel> {
 
   StreamSubscription<VADEvent>? _vadSubscription;
   Timer? _amplitudeTimer;
+  bool _turnInFlight = false;
+  bool _endingInFlight = false;
+  bool _turnInFlight = false;
+  bool _endingInFlight = false;
 
   SessionNotifier(Ref ref) : super(SessionModel.idle()) {
     _streamHandler = StreamHandler(
@@ -87,14 +91,36 @@ class SessionNotifier extends StateNotifier<SessionModel> {
     }
   }
 
-  Future<void> endSession() async {
+  Future<String?> endSession() async {
+    if (_endingInFlight) {
+      throw StateError('Session is already finishing. Please wait.');
+    }
+
+    if (_turnInFlight) {
+      throw StateError(
+        'Wait for the current response to finish, then tap End again.',
+      );
+    }
+
+    _endingInFlight = true;
     state = state.copyWith(sessionState: SessionState.ending);
-    await _stopVoicePipeline();
-    await _saveTranscriptAndTriggerExtraction();
-    state = SessionModel.idle();
+
+    try {
+      await _stopVoicePipeline();
+      final warning = await _saveTranscriptAndTriggerExtraction();
+      state = SessionModel.idle();
+      return warning;
+    } catch (_) {
+      // Keep the session ID and exchanges so End can be retried.
+      state = state.copyWith(audioState: AudioState.textMode);
+      rethrow;
+    } finally {
+      _endingInFlight = false;
+    }
   }
 
   void toggleTextMode() {
+    if (state.sessionState != SessionState.active || _turnInFlight) return;
     if (state.audioState == AudioState.textMode) {
       state = state.copyWith(audioState: AudioState.listening);
       _beginVoicePipeline();
@@ -105,7 +131,7 @@ class SessionNotifier extends StateNotifier<SessionModel> {
   }
 
   Future<void> sendText(String text) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty || state.sessionState != SessionState.active) return;
     await _runSessionTurn(userText: text, isKickoff: false);
     // Stay in text mode after sending (user explicitly chose text mode)
     if (state.audioState != AudioState.textMode) {
@@ -122,6 +148,23 @@ class SessionNotifier extends StateNotifier<SessionModel> {
   /// - On subsequent turns, appends the new user message to recentExchanges,
   ///   streams the assistant response, and updates the exchange with it.
   Future<void> _runSessionTurn({
+    required String userText,
+    required bool isKickoff,
+  }) async {
+    if (_turnInFlight || state.sessionState != SessionState.active) return;
+
+    _turnInFlight = true;
+    try {
+      await _performSessionTurn(
+        userText: userText,
+        isKickoff: isKickoff,
+      );
+    } finally {
+      _turnInFlight = false;
+    }
+  }
+
+  Future<void> _performSessionTurn({
     required String userText,
     required bool isKickoff,
   }) async {
@@ -222,6 +265,7 @@ class SessionNotifier extends StateNotifier<SessionModel> {
   // ---------------------------------------------------------------------
 
   Future<void> _beginVoicePipeline() async {
+    if (state.sessionState != SessionState.active) return;
     final micStatus = await Permission.microphone.request();
 
     debugPrint('Microphone status: $micStatus');
@@ -245,9 +289,11 @@ class SessionNotifier extends StateNotifier<SessionModel> {
 
 await _audioPlayer.stop();
 
-await Future.delayed(const Duration(milliseconds: 1200));
+    await Future.delayed(const Duration(milliseconds: 1200));
 
-await _recorder.start(
+    if (state.sessionState != SessionState.active) return;
+
+    await _recorder.start(
       const RecordConfig(encoder: AudioEncoder.aacLc),
       path: tempPath,
     );
@@ -332,23 +378,19 @@ await _recorder.start(
   // Session end — build transcript, call backend
   // ---------------------------------------------------------------------
 
-  Future<void> _saveTranscriptAndTriggerExtraction() async {
+  Future<String?> _saveTranscriptAndTriggerExtraction() async {
     final sessionId = state.sessionId;
-    if (sessionId == null || state.recentExchanges.isEmpty) {
-      debugPrint('Session end: no session_id or no exchanges — skipping');
-      return;
-    }
 
-    final transcript = _buildTranscriptText(state.recentExchanges);
-
-    try {
-      await _pipelineService.endSession(
-        sessionId: sessionId,
-        transcript: transcript,
+    if (sessionId == null) {
+      throw StateError(
+        'No session ID was received. Session completion cannot be confirmed.',
       );
-    } catch (error) {
-      debugPrint('Save transcript error: $error');
     }
+
+    return _pipelineService.endSession(
+      sessionId: sessionId,
+      transcript: _buildTranscriptText(state.recentExchanges),
+    );
   }
 
   String _buildTranscriptText(List<Exchange> exchanges) {

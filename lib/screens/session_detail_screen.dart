@@ -98,6 +98,8 @@ class SessionDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
             ],
+            if (session.endedAt != null)
+              _RecoverResearchButton(sessionId: session.sessionId),
             const Text(
               'TRANSCRIPT',
               style: TextStyle(

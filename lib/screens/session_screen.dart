@@ -40,8 +40,31 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                 ref.read(sessionNotifierProvider.notifier).toggleTextMode();
               },
               onEndSession: () async {
-                await ref.read(sessionNotifierProvider.notifier).endSession();
-                if (context.mounted) context.pop();
+                try {
+                  final warning = await ref
+                      .read(sessionNotifierProvider.notifier)
+                      .endSession();
+
+                  if (!context.mounted) return;
+
+                  if (warning != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(warning)),
+                    );
+                  }
+
+                  context.pop();
+                } catch (error) {
+                  if (!context.mounted) return;
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Could not finish session: $error Tap End to retry.',
+                      ),
+                    ),
+                  );
+                }
               },
             ),
             Expanded(

@@ -188,37 +188,63 @@ class SessionPipelineService {
   }
 
   /// Ends a streaming session — saves transcript and runs post-processing.
-  Future<void> endSession({
+    Future<String?> endSession({
     required String sessionId,
     required String transcript,
   }) async {
-    final uri = Uri.parse('${Env.sessionPipelineUrl}/session/end');
+    final uri = Uri.parse(Env.sessionPipelineUrl).resolve('/session/end');
+    final auth = Supabase.instance.client.auth;
+    var session = auth.currentSession;
 
-    final accessToken = Supabase.instance.client.auth.currentSession?.accessToken;
-    if (accessToken == null) {
-      throw SessionPipelineException('No access token available');
+    if (session == null) {
+      throw SessionPipelineException(
+        'Sign in again before retrying session end.',
+      );
+    }
+
+    if (session.isExpired) {
+      session = (await auth.refreshSession()).session;
+    }
+
+    if (session == null) {
+      throw SessionPipelineException(
+        'Session expired. Sign in again to retry.',
+      );
     }
 
     final response = await http.post(
       uri,
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': 'Bearer $accessToken',
+        'Authorization': 'Bearer ${session.accessToken}',
       },
-      body: utf8.encode(jsonEncode({
-        'session_id': sessionId,
-        'transcript': transcript,
-      })),
-    );
+      body: utf8.encode(jsonEncode({'session_id': sessionId})),
+    ).timeout(const Duration(minutes: 2));
 
-    if (response.statusCode != 200) {
+    Map<String, dynamic> result = {};
+    try {
+      result = jsonDecode(
+        utf8.decode(response.bodyBytes),
+      ) as Map<String, dynamic>;
+    } catch (_) {}
+
+    if (response.statusCode != 200 || result['success'] != true) {
       throw SessionPipelineException(
-        'End session failed: ${response.statusCode}',
+        result['error'] is String
+            ? result['error'] as String
+            : 'Could not finish session. Please retry.',
         statusCode: response.statusCode,
       );
     }
-  }
 
+    if (!['completed', 'partial'].contains(result['processing_status'])) {
+      throw SessionPipelineException(
+        'Processing was not confirmed. Please retry.',
+      );
+    }
+
+    return result['warning'] as String?;
+  }
   String _getUserId() {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
