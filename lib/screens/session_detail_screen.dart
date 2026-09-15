@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/session_record_model.dart';
+import '../services/session_pipeline_service.dart';
 
 class SessionDetailScreen extends StatelessWidget {
   final SessionRecordModel session;
@@ -144,4 +145,67 @@ class SessionDetailScreen extends StatelessWidget {
         return Icons.chat_outlined;
     }
   }
+}
+class _RecoverResearchButton extends StatefulWidget {
+  final String sessionId;
+
+  const _RecoverResearchButton({required this.sessionId});
+
+  @override
+  State<_RecoverResearchButton> createState() =>
+      _RecoverResearchButtonState();
+}
+
+class _RecoverResearchButtonState extends State<_RecoverResearchButton> {
+  bool _busy = false;
+  bool _checked = false;
+
+  Future<void> _recover() async {
+    if (_busy || _checked) return;
+    setState(() => _busy = true);
+
+    try {
+      await SessionPipelineService().endSession(
+        sessionId: widget.sessionId,
+        transcript: '',
+      );
+
+      if (!mounted) return;
+      setState(() => _checked = true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Research context checked from your saved messages. '
+            'Research may still need details.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not check research context: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: OutlinedButton(
+          onPressed: _busy || _checked ? null : _recover,
+          child: Text(
+            _busy
+                ? 'Checking saved context…'
+                : _checked
+                    ? 'Context checked'
+                    : 'Recover research context',
+          ),
+        ),
+      );
 }
