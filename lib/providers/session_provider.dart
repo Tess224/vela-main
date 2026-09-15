@@ -51,8 +51,6 @@ class SessionNotifier extends StateNotifier<SessionModel> {
   Timer? _amplitudeTimer;
   bool _turnInFlight = false;
   bool _endingInFlight = false;
-  bool _turnInFlight = false;
-  bool _endingInFlight = false;
 
   SessionNotifier(Ref ref) : super(SessionModel.idle()) {
     _streamHandler = StreamHandler(
