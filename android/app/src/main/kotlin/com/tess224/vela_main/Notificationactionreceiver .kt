@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
+import androidx.core.app.RemoteInput
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -23,6 +25,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     companion object {
         private const val TAG = "VelaAction"
         private const val TIMEOUT_MS = 10_000
+        const val KEY_REPLY = "vela_reply"
     }
 
     private data class Target(
@@ -33,7 +36,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
     )
 
     override fun onReceive(context: Context, intent: Intent) {
-        val actionId = intent.getStringExtra("action_id") ?: return
+        // A reply chip arrives through RemoteInput; a button through action_id.
+        val replied = RemoteInput.getResultsFromIntent(intent)
+            ?.getCharSequence(KEY_REPLY)?.toString()?.trim()
+        val actionId = replied ?: intent.getStringExtra("action_id") ?: return
         val eventId = intent.getStringExtra("event_id") ?: ""
         val nudgeId = intent.getStringExtra("nudge_id") ?: ""
         val checkinId = intent.getStringExtra("checkin_id") ?: ""
@@ -49,6 +55,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
             val notifId = notifKey.hashCode().and(0x7FFFFFFF) % 100000
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.cancel(notifId)
+        }
+
+        if (replied != null && !offeredChoices(intent).contains(replied)) {
+            Log.w(TAG, "Reply outside the offered choices was not sent")
+            return
         }
 
         val target = resolveTarget(context, type, actionId, eventId, nudgeId, checkinId)
@@ -85,6 +96,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 pending.finish()
             }
         }.start()
+    }
+
+    private fun offeredChoices(intent: Intent): Set<String> = try {
+        val arr = JSONArray(intent.getStringExtra("reply_choices") ?: "[]")
+        (0 until arr.length()).map { arr.getString(it) }.toSet()
+    } catch (e: Exception) {
+        emptySet()
     }
 
     private fun resolveTarget(

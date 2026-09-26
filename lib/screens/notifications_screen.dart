@@ -442,11 +442,26 @@ class _NudgeRow extends StatelessWidget {
 // Check-ins tab
 // ---------------------------------------------------------------------------
 
-class _CheckinsTab extends StatelessWidget {
+class _CheckinsTab extends StatefulWidget {
+  @override
+  State<_CheckinsTab> createState() => _CheckinsTabState();
+}
+
+class _CheckinsTabState extends State<_CheckinsTab> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _fetchCheckins();
+  }
+
+  void _refresh() => setState(() => _future = _fetchCheckins());
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _fetchCheckins(),
+      future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: Color(0xFFC9A6FF)));
@@ -458,7 +473,7 @@ class _CheckinsTab extends StatelessWidget {
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           itemCount: checkins.length,
-          itemBuilder: (context, i) => _CheckinRow(checkin: checkins[i]),
+          itemBuilder: (context, i) => _CheckinRow(checkin: checkins[i], onResponded: _refresh),
         );
       },
     );
@@ -470,7 +485,7 @@ class _CheckinsTab extends StatelessWidget {
     try {
       final rows = await Supabase.instance.client
           .from('ambient_checkins')
-          .select('checkin_id, question_text, response_value, responded_at, sent_at, metric_type, trigger_context')
+          .select('checkin_id, question_text, response_options, response_value, responded_at, sent_at, metric_type, trigger_context')
           .eq('user_id', userId)
           .order('created_at', ascending: false)
           .limit(60);
@@ -478,7 +493,6 @@ class _CheckinsTab extends StatelessWidget {
           .where((r) => r['sent_at'] != null)
           .take(50)
           .toList();
-      debugPrint('Checkins fetch: got ${sent.length} sent out of ${rows.length} total');
       return List<Map<String, dynamic>>.from(sent);
     } catch (e) {
       debugPrint('Checkins fetch error: $e');
@@ -489,8 +503,14 @@ class _CheckinsTab extends StatelessWidget {
 
 class _CheckinRow extends StatelessWidget {
   final Map<String, dynamic> checkin;
+  final VoidCallback onResponded;
 
-  const _CheckinRow({required this.checkin});
+  const _CheckinRow({required this.checkin, required this.onResponded});
+
+  List<String> get _options {
+    final raw = checkin['response_options'];
+    return raw is List ? raw.map((e) => e.toString()).toList() : <String>[];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -498,51 +518,120 @@ class _CheckinRow extends StatelessWidget {
     final response = checkin['response_value'] as String?;
     final sentAt = checkin['sent_at'] as String?;
     final hasResponded = response != null && response.isNotEmpty;
+    final canRespond = !hasResponded && _options.isNotEmpty;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: const Color(0x05FFFFFF),
-        border: Border.all(color: const Color(0x08FFFFFF)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: const Color(0x0AFFFFFF),
+    return GestureDetector(
+      onTap: canRespond ? () => _showRespondSheet(context) : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: canRespond ? const Color(0x0AFFFFFF) : const Color(0x05FFFFFF),
+          border: Border.all(color: canRespond ? const Color(0x1AC9A6FF) : const Color(0x08FFFFFF)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: const Color(0x0AFFFFFF),
+              ),
+              child: Icon(
+                hasResponded ? Icons.chat_bubble_outline : Icons.help_outline,
+                color: hasResponded ? const Color(0xFF4ADE80) : const Color(0xFF8A92A8),
+                size: 16,
+              ),
             ),
-            child: Icon(
-              hasResponded ? Icons.chat_bubble_outline : Icons.help_outline,
-              color: hasResponded ? const Color(0xFF4ADE80) : const Color(0xFF8A92A8),
-              size: 16,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(question, style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 13.5, fontWeight: FontWeight.w500, color: Color(0xFFF0F2F8))),
+                  const SizedBox(height: 4),
+                  if (hasResponded)
+                    Text('You responded: $response', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: Color(0xFF4ADE80)))
+                  else if (canRespond)
+                    const Text('Tap to respond', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: Color(0xFFC9A6FF)))
+                  else
+                    const Text('No response', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: Color(0xFF4A5168))),
+                  const SizedBox(height: 4),
+                  if (sentAt != null)
+                    Text(_timeAgo(DateTime.parse(sentAt)), style: const TextStyle(fontFamily: 'SpaceMono', fontSize: 9, letterSpacing: 0.6, color: Color(0xFF4A5168))),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(question, style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 13.5, fontWeight: FontWeight.w500, color: Color(0xFFF0F2F8))),
-                const SizedBox(height: 4),
-                if (hasResponded)
-                  Text('You responded: $response', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: Color(0xFF4ADE80)))
-                else
-                  const Text('No response', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: Color(0xFF4A5168))),
-                const SizedBox(height: 4),
-                if (sentAt != null)
-                  Text(_timeAgo(DateTime.parse(sentAt)), style: const TextStyle(fontFamily: 'SpaceMono', fontSize: 9, letterSpacing: 0.6, color: Color(0xFF4A5168))),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  void _showRespondSheet(BuildContext context) {
+    final checkinId = checkin['checkin_id'] as String;
+    final options = _options;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0C0C10),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFF4A5168), borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 20),
+            Text(checkin['question_text'] as String? ?? '', style: const TextStyle(fontFamily: 'Rajdhani', color: Color(0xFFF0F2F8), fontSize: 18, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: options.map((option) => OutlinedButton(
+                onPressed: () {
+                  final messenger = ScaffoldMessenger.of(ctx);
+                  Navigator.of(ctx).pop();
+                  _sendResponse(checkinId, option, messenger);
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.grey[700]!),
+                  minimumSize: const Size(56, 48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(option, style: const TextStyle(color: Colors.white, fontSize: 15)),
+              )).toList(),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendResponse(
+    String checkinId,
+    String response,
+    ScaffoldMessengerState messenger,
+  ) async {
+    try {
+      await ApiClient.instance.postJson(
+        '${Env.sessionPipelineUrl}/checkin/respond',
+        body: {'checkin_id': checkinId, 'response_value': response},
+      );
+      onResponded();
+    } catch (e) {
+      debugPrint('Check-in response failed: $e');
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text("Couldn't save that response — try again"),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }
 
