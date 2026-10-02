@@ -21,6 +21,8 @@ import 'screens/health_profile_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/notification_settings_screen.dart';
 import 'screens/schedule_screen.dart';
+import 'screens/daily_plan_screen.dart';
+import 'screens/signals_screen.dart';
 import 'screens/add_event_screen.dart';
 import 'screens/session_detail_screen.dart';
 import 'screens/notifications_screen.dart';
@@ -142,6 +144,30 @@ final routerProvider = Provider<GoRouter>((ref) {
           final session = state.extra as SessionRecordModel;
           return SessionDetailScreen(session: session);
         },
+      ),
+
+      // Saved daily plan and activity details.
+      GoRoute(
+        path: '/plan',
+        builder: (context, state) => const VelaShell(initialIndex: 1),
+      ),
+      GoRoute(
+        path: '/plan/activity/:activityId',
+        builder: (context, state) => PlanActivityScreen(
+          activityId: state.pathParameters['activityId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/signals',
+        builder: (context, state) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            title: const Text('Signals'),
+          ),
+          body: const SafeArea(child: SignalsScreen()),
+        ),
       ),
 
       // Schedule

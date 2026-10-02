@@ -30,7 +30,7 @@ class VelaBottomNav extends StatelessWidget {
           _NavItem(
             icon: Icons.show_chart,
             activeIcon: Icons.show_chart,
-            label: 'Signals',
+            label: 'Plan',
             isActive: currentIndex == 1,
             onTap: () => onTap(1),
           ),

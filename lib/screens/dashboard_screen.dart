@@ -17,6 +17,8 @@ import '../providers/user_provider.dart';
 import '../core/health/health_data_manager.dart';
 import '../widgets/context_capture_bar.dart';
 import '../widgets/notes_feed.dart';
+import '../providers/daily_plan_provider.dart';
+import 'daily_plan_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final String? highlightEventId;
@@ -40,6 +42,7 @@ class DashboardScreen extends ConsumerWidget {
       onRefresh: () async {
         ref.invalidate(userProfileProvider);
         ref.invalidate(userMemoryProvider);
+        await ref.refresh(dailyPlanProvider.future).then((_) {});
       },
       child: ListView(
         padding: const EdgeInsets.all(20),
@@ -61,6 +64,8 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           const _ProfileCompletionCard(),
           const SizedBox(height: 12),
+          const TodayPlanCard(),
+          const SizedBox(height: 16),
           const QuickGoalInput(),
               const SizedBox(height: 8),
               const ContextCaptureBar(),

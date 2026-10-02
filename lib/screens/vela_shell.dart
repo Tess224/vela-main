@@ -5,15 +5,17 @@ import 'package:go_router/go_router.dart';
 
 import '../widgets/vela_bottom_nav.dart';
 import 'dashboard_screen.dart';
-import 'signals_screen.dart';
+import 'daily_plan_screen.dart';
 import 'profile_screen_v2.dart';
 
 class VelaShell extends StatefulWidget {
+  final int initialIndex;
   final String? highlightEventId;
   final String? recoveryEventId;
 
   const VelaShell({
     super.key,
+    this.initialIndex = 0,
     this.highlightEventId,
     this.recoveryEventId,
   });
@@ -23,7 +25,21 @@ class VelaShell extends StatefulWidget {
 }
 
 class _VelaShellState extends State<VelaShell> {
-  int _currentIndex = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
+
+  @override
+  void didUpdateWidget(covariant VelaShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      _currentIndex = widget.initialIndex;
+    }
+  }
 
   void _onTabTap(int index) {
     if (index == 2) {
@@ -70,7 +86,7 @@ class _VelaShellState extends State<VelaShell> {
   Widget _buildBody() {
     switch (_currentIndex) {
       case 1:
-        return const SignalsScreen();
+        return const DailyPlanScreen();
       case 4:
         return const ProfileScreenV2();
       default:
