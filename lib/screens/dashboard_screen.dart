@@ -510,7 +510,8 @@ class _QuickGoalInputState extends ConsumerState<QuickGoalInput> {
     if (text.length < 3 || _sending) return;
     setState(() => _sending = true);
 
-    String? savedGoalId;
+    bool accepted = false;
+    String savedPrefix = '';
 
     try {
       final saved = await ApiClient.instance.postJson(
@@ -521,23 +522,26 @@ class _QuickGoalInputState extends ConsumerState<QuickGoalInput> {
         },
       );
 
+      final isReplan = saved['request_kind'] == 'replan';
       final goalId = saved['goal_id'];
-      if (goalId is! String || goalId.isEmpty) {
+
+      if (!isReplan && (goalId is! String || goalId.isEmpty)) {
         throw ApiException(
           502,
           'The server did not confirm a goal ID. Check Goals before trying again.',
         );
       }
 
-      savedGoalId = goalId;
+      accepted = true;
+      savedPrefix = isReplan ? '' : 'Goal saved. ';
       if (mounted) _controller.clear();
-      _showMessage('Goal saved. Vela is preparing your plan.');
+      _showMessage('${savedPrefix}Vela is preparing your plan.');
 
       final result = await ApiClient.instance.postJson(
         '${Env.plannerUrl}/plan',
         body: {
-          'trigger': 'new_goal',
-          'new_goal_id': goalId,
+          'trigger': isReplan ? 'user_request' : 'new_goal',
+          if (!isReplan) 'new_goal_id': goalId,
         },
         timeout: const Duration(minutes: 3),
       );
@@ -549,30 +553,30 @@ class _QuickGoalInputState extends ConsumerState<QuickGoalInput> {
         _showMessage('Your plan is ready. Open Plan to see the activities.');
       } else if (result['planningStatus'] == 'needs_details') {
         _showMessage(
-          'Goal saved. ${result['clarification']} Reply in Talk so Vela can continue.',
+          '${savedPrefix}${result['clarification']} Reply in Talk so Vela can continue.',
         );
       } else if (result['planningStatus'] == 'failed') {
-        _showMessage('Goal saved, but planning could not finish.');
+        _showMessage('${savedPrefix}Planning could not finish.');
       } else {
-        _showMessage('Goal saved. No new plan was published.');
+        _showMessage('${savedPrefix}No new plan was published.');
       }
     } on TimeoutException {
       if (mounted) ref.invalidate(dailyPlanProvider);
-      _showMessage(savedGoalId == null
-          ? 'Could not confirm the save. Check Goals before submitting again.'
-          : 'Goal saved. Planning is taking longer than expected and may still be running.');
+      _showMessage(accepted
+          ? '${savedPrefix}Planning is taking longer than expected and may still be running.'
+          : 'Could not confirm the request. Check Goals and Plan before trying again.');
     } on ApiException catch (e) {
-      _showMessage(savedGoalId != null
+      _showMessage(accepted
           ? (e.isAuthError
-              ? 'Goal saved. Sign in again to continue planning.'
-              : 'Goal saved, but planning could not finish. You do not need to add it again.')
+              ? '${savedPrefix}Sign in again to continue planning.'
+              : '${savedPrefix}Planning could not finish. Retry from Plan.')
           : (e.isAuthError
-              ? 'Sign in again to add goals'
-              : 'Could not confirm the save: ${e.message}. Check Goals before retrying.'));
+              ? 'Sign in again to continue.'
+              : 'Could not confirm the request: ${e.message}. Check Goals and Plan before retrying.'));
     } catch (_) {
-      _showMessage(savedGoalId == null
-          ? 'Could not confirm the save. Check Goals before submitting again.'
-          : 'Goal saved. Could not confirm plan generation. Check Plan shortly.');
+      _showMessage(accepted
+          ? '${savedPrefix}Could not confirm plan generation. Check Plan shortly.'
+          : 'Could not confirm the request. Check Goals and Plan before trying again.');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
