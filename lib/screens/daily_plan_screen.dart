@@ -354,7 +354,7 @@ class PlanActivityScreen extends ConsumerWidget {
                     children: [
                       const _SectionTitle(
                         'BREAKDOWN',
-                        'Work components',
+                        'Activity steps',
                       ),
                       for (var i = 0; i < activity.steps.length; i++)
                         Padding(
@@ -403,6 +403,8 @@ class PlanActivityScreen extends ConsumerWidget {
                   'Breakdown',
                   'No further steps were saved for this activity.',
                 ),
+              if (activity.expectedResult != null)
+                _DetailSection('Expected result', activity.expectedResult!),
               if (activity.completionStandard != null)
                 _DetailSection(
                   'What counts as progress',

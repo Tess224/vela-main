@@ -501,16 +501,20 @@ class _QuickGoalInputState extends State<QuickGoalInput> {
     setState(() => _sending = true);
 
     try {
-      await ApiClient.instance.postJson(
+      final result = await ApiClient.instance.postJson(
         '${Env.plannerUrl}/quick-goal',
         body: {'text': text},
       );
       if (!mounted) return;
       _controller.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Goal added — Vela is planning'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(result['planningStatus'] == 'needs_details'
+              ? 'Goal saved. ${result['clarification']} Reply in Talk so Vela can continue.'
+              : result['planningStatus'] == 'published'
+                  ? 'Your plan is ready. Open Plan to see the activities.'
+                  : 'Goal saved. Your current plan is unchanged.'),
+          duration: const Duration(seconds: 8),
         ),
       );
     } on ApiException catch (e) {

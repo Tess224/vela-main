@@ -12,7 +12,7 @@ double? _number(dynamic value) =>
 
 class DayActivity {
   final String id, kind, title, timeLabel, status;
-  final String? goalTitle, instruction, reasoning, completionStandard;
+  final String? goalTitle, instruction, reasoning, completionStandard, expectedResult;
   final DateTime startsAt;
   final DateTime? endsAt;
   final double? minutes, bufferMinutes, actualMinutes;
@@ -27,6 +27,7 @@ class DayActivity {
         status = json['status'] as String,
         goalTitle = _text(json['goalTitle']),
         instruction = _text(json['instruction']),
+        expectedResult = _text(json['expectedResult']),
         reasoning = _text(json['reasoning']),
         completionStandard = _text(json['completionStandard']),
         startsAt = DateTime.parse(json['startsAt'] as String),
