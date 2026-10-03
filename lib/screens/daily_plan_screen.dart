@@ -1,3 +1,6 @@
+import 'dart:async';
+import '../config/env.dart';
+import '../services/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,11 +37,7 @@ class DailyPlanScreen extends ConsumerWidget {
             icon: const Icon(Icons.calendar_month_outlined),
             onPressed: () => context.push('/schedule'),
           ),
-          IconButton(
-            tooltip: 'Refresh plan',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(dailyPlanProvider),
-          ),
+          const _RegeneratePlanButton(),
         ],
       ),
       body: ref.watch(dailyPlanProvider).when(
@@ -173,6 +172,143 @@ class DailyPlanScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RegeneratePlanButton extends ConsumerStatefulWidget {
+  const _RegeneratePlanButton();
+
+  @override
+  ConsumerState<_RegeneratePlanButton> createState() =>
+      _RegeneratePlanButtonState();
+}
+
+class _RegeneratePlanButtonState
+    extends ConsumerState<_RegeneratePlanButton> {
+  bool _busy = false;
+
+  Future<void> _showResult(String title, String message) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(child: Text(message)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _regenerate() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+
+    try {
+      final base = Env.plannerUrl.replaceFirst(RegExp(r'/$'), '');
+
+      final result = await ApiClient.instance.postJson(
+        '$base/plan',
+        body: {'trigger': 'user_request'},
+        timeout: const Duration(minutes: 3),
+      );
+
+      if (!mounted) return;
+
+      if (result['planningStatus'] == 'needs_details') {
+        await _showResult(
+          'Vela needs more detail',
+          result['clarification']?.toString() ??
+              'More information is needed before Vela can prepare this plan.',
+        );
+        return;
+      }
+
+      if (result['planningStatus'] != 'published') {
+        await _showResult(
+          'No new plan published',
+          'Vela did not publish a replacement plan. '
+              'The activities displayed may still belong to your earlier plan.',
+        );
+        return;
+      }
+
+      final planId = result['planId'];
+
+      if (planId is! String || planId.isEmpty) {
+        throw StateError('The planner did not return the new plan ID.');
+      }
+
+      final plan = await ref.refresh(dailyPlanProvider.future);
+      if (!mounted) return;
+
+      if (plan.planId != planId) {
+        await _showResult(
+          'New plan not confirmed',
+          'The planner returned a new plan, but the app has not loaded '
+              'that version. Pull down on Plan to reload it.',
+        );
+        return;
+      }
+
+      final currentWork = plan.activities
+          .where((a) => a.isWork && !a.carriedFromEarlierPlan)
+          .toList();
+
+      if (currentWork.isEmpty ||
+          currentWork.any((a) =>
+              a.steps.isEmpty ||
+              a.instruction == null ||
+              a.expectedResult == null)) {
+        await _showResult(
+          'Activity details are still missing',
+          'The new plan was loaded, but its activities do not contain '
+              'the required instructions, steps and expected result. '
+              'This needs a backend check. Plan ID: $planId',
+        );
+        return;
+      }
+
+      await _showResult(
+        'New plan loaded',
+        'Open an activity to see its instructions, steps and expected result.',
+      );
+    } on TimeoutException {
+      await _showResult(
+        'Planning has not been confirmed',
+        'Vela may still be preparing the plan. Pull down on Plan to check '
+            'for an update before requesting another regeneration.',
+      );
+    } on ApiException catch (error) {
+      await _showResult('Could not regenerate plan', error.message);
+    } catch (error) {
+      await _showResult('Could not confirm the new plan', error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: _busy ? 'Regenerating plan' : 'Regenerate plan',
+      onPressed: _busy ? null : _regenerate,
+      icon: _busy
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: _accent,
+              ),
+            )
+          : const Icon(Icons.auto_awesome),
     );
   }
 }
