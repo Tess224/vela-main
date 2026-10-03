@@ -513,7 +513,9 @@ class _QuickGoalInputState extends State<QuickGoalInput> {
               ? 'Goal saved. ${result['clarification']} Reply in Talk so Vela can continue.'
               : result['planningStatus'] == 'published'
                   ? 'Your plan is ready. Open Plan to see the activities.'
-                  : 'Goal saved. Your current plan is unchanged.'),
+                  : result['planningStatus'] == 'failed'
+                      ? 'Goal saved, but Vela could not finish its plan. You do not need to add this goal again.'
+                      : 'Goal saved. Your current plan is unchanged.'),
           duration: const Duration(seconds: 8),
         ),
       );
