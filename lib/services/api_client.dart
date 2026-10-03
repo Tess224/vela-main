@@ -65,8 +65,9 @@ class ApiClient {
   Future<Map<String, dynamic>> postJson(
     String url, {
     Map<String, dynamic>? body,
+    Duration timeout = _timeout,
   }) =>
-      _send('POST', url, body: body);
+      _send('POST', url, body: body, timeout: timeout);
 
   Future<Map<String, dynamic>> deleteJson(
     String url, {
@@ -78,6 +79,7 @@ class ApiClient {
     String method,
     String url, {
     Map<String, dynamic>? body,
+    Duration timeout = _timeout,
   }) async {
     final token = await _accessToken();
     final uri = Uri.parse(url);
@@ -95,7 +97,7 @@ class ApiClient {
       case 'POST':
         resp = await http
             .post(uri, headers: headers, body: encoded)
-            .timeout(_timeout);
+            .timeout(timeout);
         break;
       case 'DELETE':
         resp = await http

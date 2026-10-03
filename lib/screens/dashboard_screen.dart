@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../models/monitoring_event_model.dart';
 import '../models/user_memory_model.dart';
 import '../models/session_record_model.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/env.dart';
@@ -477,14 +478,14 @@ class _EmptyDashboard extends StatelessWidget {
   }
 }
 
-class QuickGoalInput extends StatefulWidget {
+class QuickGoalInput extends ConsumerStatefulWidget {
   const QuickGoalInput({super.key});
 
   @override
-  State<QuickGoalInput> createState() => _QuickGoalInputState();
+  ConsumerState<QuickGoalInput> createState() => _QuickGoalInputState();
 }
 
-class _QuickGoalInputState extends State<QuickGoalInput> {
+class _QuickGoalInputState extends ConsumerState<QuickGoalInput> {
   final _controller = TextEditingController();
   bool _sending = false;
 
@@ -494,49 +495,84 @@ class _QuickGoalInputState extends State<QuickGoalInput> {
     super.dispose();
   }
 
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 8),
+      ));
+  }
+
   Future<void> _submit() async {
     final text = _controller.text.trim();
     if (text.length < 3 || _sending) return;
-
     setState(() => _sending = true);
 
+    String? savedGoalId;
+
     try {
-      final result = await ApiClient.instance.postJson(
+      final saved = await ApiClient.instance.postJson(
         '${Env.plannerUrl}/quick-goal',
-        body: {'text': text},
+        body: {
+          'text': text,
+          'defer_planning': true,
+        },
       );
+
+      final goalId = saved['goal_id'];
+      if (goalId is! String || goalId.isEmpty) {
+        throw ApiException(
+          502,
+          'The server did not confirm a goal ID. Check Goals before trying again.',
+        );
+      }
+
+      savedGoalId = goalId;
+      if (mounted) _controller.clear();
+      _showMessage('Goal saved. Vela is preparing your plan.');
+
+      final result = await ApiClient.instance.postJson(
+        '${Env.plannerUrl}/plan',
+        body: {
+          'trigger': 'new_goal',
+          'new_goal_id': goalId,
+        },
+        timeout: const Duration(minutes: 3),
+      );
+
       if (!mounted) return;
-      _controller.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['planningStatus'] == 'needs_details'
-              ? 'Goal saved. ${result['clarification']} Reply in Talk so Vela can continue.'
-              : result['planningStatus'] == 'published'
-                  ? 'Your plan is ready. Open Plan to see the activities.'
-                  : result['planningStatus'] == 'failed'
-                      ? 'Goal saved, but Vela could not finish its plan. You do not need to add this goal again.'
-                      : 'Goal saved. Your current plan is unchanged.'),
-          duration: const Duration(seconds: 8),
-        ),
-      );
+      ref.invalidate(dailyPlanProvider);
+
+      if (result['planningStatus'] == 'published') {
+        _showMessage('Your plan is ready. Open Plan to see the activities.');
+      } else if (result['planningStatus'] == 'needs_details') {
+        _showMessage(
+          'Goal saved. ${result['clarification']} Reply in Talk so Vela can continue.',
+        );
+      } else if (result['planningStatus'] == 'failed') {
+        _showMessage('Goal saved, but planning could not finish.');
+      } else {
+        _showMessage('Goal saved. No new plan was published.');
+      }
+    } on TimeoutException {
+      if (mounted) ref.invalidate(dailyPlanProvider);
+      _showMessage(savedGoalId == null
+          ? 'Could not confirm the save. Check Goals before submitting again.'
+          : 'Goal saved. Planning is taking longer than expected and may still be running.');
     } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.isAuthError
+      _showMessage(savedGoalId != null
+          ? (e.isAuthError
+              ? 'Goal saved. Sign in again to continue planning.'
+              : 'Goal saved, but planning could not finish. You do not need to add it again.')
+          : (e.isAuthError
               ? 'Sign in again to add goals'
-              : 'Failed: ${e.message}'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed: $e'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+              : 'Could not confirm the save: ${e.message}. Check Goals before retrying.'));
+    } catch (_) {
+      _showMessage(savedGoalId == null
+          ? 'Could not confirm the save. Check Goals before submitting again.'
+          : 'Goal saved. Could not confirm plan generation. Check Plan shortly.');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -551,6 +587,7 @@ class _QuickGoalInputState extends State<QuickGoalInput> {
           Expanded(
             child: TextField(
               controller: _controller,
+              enabled: !_sending,
               style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Tell Vela what you need to do...',
