@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/daily_plan_model.dart';
 import '../providers/daily_plan_provider.dart';
+import 'day_editor.dart';
 
 const _accent = Color(0xFFC9A6FF);
 const _muted = Color(0xFFA5A5B5);
@@ -64,6 +65,12 @@ class DailyPlanScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 18),
+              OutlinedButton.icon(
+                onPressed: () => openDayEditor(context),
+                icon: const Icon(Icons.tune),
+                label: const Text('Shape today · availability, timing and progress'),
+              ),
+              const SizedBox(height: 12),
               _PlanCard(
                 children: [
                   const _SectionTitle('TODAY', 'Your day, in order'),
@@ -222,6 +229,10 @@ class _RegeneratePlanButtonState
       if (!mounted) return;
 
       if (result['planningStatus'] == 'needs_details') {
+        if (result['clarification']?.toString().toLowerCase().contains('available') == true) {
+          await openDayEditor(context);
+          return;
+        }
         await _showResult(
           'Vela needs more detail',
           result['clarification']?.toString() ??
